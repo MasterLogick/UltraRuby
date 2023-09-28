@@ -111,6 +111,7 @@ void Lexer::emmitToken() {
             return;
         case '\n':
         case '\r': {
+            //todo count new lines
             do {
                 lastChar = input->getNextChar();
             } while (lastChar == '\n' || lastChar == '\r');

@@ -22,6 +22,10 @@ public:
         return args;
     }
 
+    inline const std::unique_ptr<FunctionDef> &getBlock() const {
+        return block;
+    }
+
     inline bool hasParens() const {
         return parens;
     }

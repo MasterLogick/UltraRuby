@@ -11,6 +11,10 @@ class Break : public Statement {
 public:
     Break(std::unique_ptr<Statement> retVal) : Statement(STMT_BREAK), retVal(std::move(retVal)) {}
 
+    inline const std::unique_ptr<Statement> &getRetVal() const {
+        return retVal;
+    }
+
 private:
     std::unique_ptr<Statement> retVal;
 };

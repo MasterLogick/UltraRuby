@@ -16,6 +16,14 @@ public:
     ) :
             Statement(STMT_CASE), arg(std::move(arg)), cases(std::move(cases)) {}
 
+    inline const std::unique_ptr<Statement> &getArg() const {
+        return arg;
+    }
+
+    inline const std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> &getCases() const {
+        return cases;
+    }
+
 private:
     std::unique_ptr<Statement> arg;
     std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> cases;

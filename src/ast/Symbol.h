@@ -10,6 +10,11 @@ namespace AST {
 class Symbol : public Statement {
 public:
     Symbol(std::string sym) : Statement(STMT_SYMBOL), sym(std::move(sym)) {}
+
+    inline const std::string &getSym() const {
+        return sym;
+    }
+
 private:
     std::string sym;
 };

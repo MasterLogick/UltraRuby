@@ -13,6 +13,10 @@ class FuncDefArgs {
 public:
     FuncDefArgs(std::map<std::string, std::unique_ptr<Statement>> args) : args(std::move(args)) {}
 
+    inline const std::map<std::string, std::unique_ptr<Statement>> &getArgs() const {
+        return args;
+    }
+
 private:
     std::map<std::string, std::unique_ptr<Statement>> args;
 };

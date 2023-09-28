@@ -12,6 +12,10 @@ class Yield : public Statement {
 public:
     Yield(std::unique_ptr<AST::CallArgs> args) : Statement(STMT_YIELD), args(std::move(args)) {}
 
+    inline const std::unique_ptr<AST::CallArgs> &getArgs() const {
+        return args;
+    }
+
 private:
     std::unique_ptr<AST::CallArgs> args;
 };

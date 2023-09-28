@@ -13,6 +13,14 @@ public:
     explicit UnaryOperation(OperationType op, std::unique_ptr<AST::Statement> expr)
             : Statement(STMT_UN_OP), op(op), expr(std::move(expr)) {}
 
+    inline OperationType getOp() const {
+        return op;
+    }
+
+    inline const std::unique_ptr<AST::Statement> &getExpr() const {
+        return expr;
+    }
+
 private:
     OperationType op;
     std::unique_ptr<AST::Statement> expr;

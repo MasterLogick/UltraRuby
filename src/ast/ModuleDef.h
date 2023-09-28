@@ -16,6 +16,14 @@ public:
               moduleIdentifier(std::move(moduleIdentifier)),
               definition(std::move(definition)) {}
 
+    inline const std::string &getModuleIdentifier() const {
+        return moduleIdentifier;
+    }
+
+    inline const std::unique_ptr<AST::Statement> &getDefinition() const {
+        return definition;
+    }
+
 private:
     std::string moduleIdentifier;
     std::unique_ptr<AST::Statement> definition;

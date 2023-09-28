@@ -195,14 +195,7 @@ private:
 
     AST::OperationType convertToUnOp(AST::OperationType type);
 
-//
-//    std::unique_ptr<AST::Statement> parseLabelOrCall();
-//
     int getOpPrecedence(AST::OperationType);
-
-
-//
-//    AST::OperationType getOp(int i);
 
     void skipTerms();
 

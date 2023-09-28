@@ -11,6 +11,10 @@ class Return : public Statement {
 public:
     Return(std::unique_ptr<Statement> retVal) : Statement(STMT_RETURN), retVal(std::move(retVal)) {}
 
+    inline const std::unique_ptr<Statement> &getRetVal() const {
+        return retVal;
+    }
+
 private:
     std::unique_ptr<Statement> retVal;
 };

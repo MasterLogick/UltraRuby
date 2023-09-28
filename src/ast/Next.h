@@ -10,6 +10,10 @@ class Next : public Statement {
 public:
     Next(std::unique_ptr<Statement> retVal) : Statement(STMT_NEXT), retVal(std::move(retVal)) {}
 
+    inline const std::unique_ptr<Statement> &getRetVal() const {
+        return retVal;
+    }
+
 private:
     std::unique_ptr<Statement> retVal;
 };

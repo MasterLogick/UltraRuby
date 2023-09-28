@@ -22,6 +22,22 @@ public:
         singleton(std::move(singleton)),
         body(std::move(body)) {}
 
+    inline const std::string &getName() const {
+        return name;
+    }
+
+    inline const std::unique_ptr<FuncDefArgs> &getArgs() const {
+        return args;
+    }
+
+    inline const std::unique_ptr<Statement> &getSingleton() const {
+        return singleton;
+    }
+
+    inline const std::unique_ptr<Statement> &getBody() const {
+        return body;
+    }
+
 private:
     std::string name;
     std::unique_ptr<FuncDefArgs> args;

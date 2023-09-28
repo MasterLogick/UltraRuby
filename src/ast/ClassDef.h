@@ -22,6 +22,18 @@ public:
             superclassIdentifier(std::move(superclassIdentifier)),
             definition(std::move(definition)) {}
 
+    inline const std::string &getClassIdentifier() const {
+        return classIdentifier;
+    }
+
+    inline const std::string &getSuperclassIdentifier() const {
+        return superclassIdentifier;
+    }
+
+    inline const std::unique_ptr<AST::Statement> &getDefinition() const {
+        return definition;
+    }
+
 private:
     std::string classIdentifier;
     std::string superclassIdentifier;

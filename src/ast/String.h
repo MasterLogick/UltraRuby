@@ -11,6 +11,10 @@ class String : public Statement {
 public:
     explicit String(std::string str) : Statement(STMT_STRING), str(std::move(str)) {}
 
+    inline const std::string &getStr() const {
+        return str;
+    }
+
 private:
     std::string str;
 };

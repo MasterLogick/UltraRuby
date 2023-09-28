@@ -16,6 +16,18 @@ public:
     Call(std::string name, std::unique_ptr<CallArgs> args, std::unique_ptr<Statement> callee)
             : Statement(STMT_CALL), name(std::move(name)), callee(std::move(callee)), args(std::move(args)) {}
 
+    inline const std::string &getName() const {
+        return name;
+    }
+
+    inline const std::unique_ptr<Statement> &getCallee() const {
+        return callee;
+    }
+
+    inline const std::unique_ptr<CallArgs> &getArgs() const {
+        return args;
+    }
+
 private:
     std::string name;
     std::unique_ptr<Statement> callee;

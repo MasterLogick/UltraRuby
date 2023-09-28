@@ -13,6 +13,10 @@ public:
     explicit Block(std::vector<std::unique_ptr<AST::Statement>> list)
             : Statement(STMT_BLOCK), list(std::move(list)) {}
 
+    inline const std::vector<std::unique_ptr<AST::Statement>> &getList() const {
+        return list;
+    }
+
 private:
     std::vector<std::unique_ptr<AST::Statement>> list;
 };
