@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_FILELEXERINPUT_H
-#define ULTRA_RUBY_FILELEXERINPUT_H
+#ifndef ULTRA_RUBY_LEXER_INPUt_FILELEXERINPUT_H
+#define ULTRA_RUBY_LEXER_INPUt_FILELEXERINPUT_H
 
 #include <string>
 #include <fstream>
@@ -21,4 +21,4 @@ private:
 } // UltraRuby
 } // Lexer
 
-#endif //ULTRA_RUBY_FILELEXERINPUT_H
+#endif //ULTRA_RUBY_LEXER_INPUt_FILELEXERINPUT_H

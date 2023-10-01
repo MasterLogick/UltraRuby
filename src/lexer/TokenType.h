@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_TOKENTYPE_H
-#define ULTRA_RUBY_TOKENTYPE_H
+#ifndef ULTRA_RUBY_LEXER_TOKENTYPE_H
+#define ULTRA_RUBY_LEXER_TOKENTYPE_H
 
 namespace UltraRuby::Lexer {
 enum TokenType {
@@ -82,4 +82,4 @@ enum TokenType {
 const char *strTokenType(TokenType type);
 }
 
-#endif //ULTRA_RUBY_TOKENTYPE_H
+#endif //ULTRA_RUBY_LEXER_TOKENTYPE_H

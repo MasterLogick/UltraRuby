@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_ARRAY_H
-#define ULTRA_RUBY_ARRAY_H
+#ifndef ULTRA_RUBY_AST_ARRAY_H
+#define ULTRA_RUBY_AST_ARRAY_H
 
 #include <memory>
 #include <vector>
@@ -23,4 +23,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_ARRAY_H
+#endif //ULTRA_RUBY_AST_ARRAY_H

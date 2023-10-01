@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_LEXERINPUT_H
-#define ULTRA_RUBY_LEXERINPUT_H
+#ifndef ULTRA_RUBY_LEXER_LEXERINPUT_H
+#define ULTRA_RUBY_LEXER_LEXERINPUT_H
 
 namespace UltraRuby::Lexer {
 
@@ -12,4 +12,4 @@ public:
 
 }
 
-#endif //ULTRA_RUBY_LEXERINPUT_H
+#endif //ULTRA_RUBY_LEXER_LEXERINPUT_H

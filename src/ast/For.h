@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_FOR_H
-#define ULTRA_RUBY_FOR_H
+#ifndef ULTRA_RUBY_AST_FOR_H
+#define ULTRA_RUBY_AST_FOR_H
 
 #include <memory>
 #include "Statement.h"
@@ -33,4 +33,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_FOR_H
+#endif //ULTRA_RUBY_AST_FOR_H

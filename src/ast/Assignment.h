@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_ASSIGNMENT_H
-#define ULTRA_RUBY_ASSIGNMENT_H
+#ifndef ULTRA_RUBY_AST_ASSIGNMENT_H
+#define ULTRA_RUBY_AST_ASSIGNMENT_H
 
 #include <memory>
 #include "Statement.h"
@@ -10,11 +10,11 @@ namespace AST {
 
 class Assignment : public Statement {
 public:
-    Assignment(std::unique_ptr<AST::Variable> dstPtr, std::unique_ptr<AST::Statement> src)
-            : Statement(STMT_ASSIGNMENT), dstPtr(std::move(dstPtr)), src(std::move(src)) {}
+    Assignment(std::unique_ptr<AST::Variable> dst, std::unique_ptr<AST::Statement> src)
+            : Statement(STMT_ASSIGNMENT), dst(std::move(dst)), src(std::move(src)) {}
 
-    inline const std::unique_ptr<AST::Variable> &getDstPtr() const {
-        return dstPtr;
+    inline const std::unique_ptr<AST::Variable> &getDst() const {
+        return dst;
     }
 
     inline const std::unique_ptr<AST::Statement> &getSrc() const {
@@ -22,11 +22,11 @@ public:
     }
 
 private:
-    std::unique_ptr<AST::Variable> dstPtr;
+    std::unique_ptr<AST::Variable> dst;
     std::unique_ptr<AST::Statement> src;
 };
 
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_ASSIGNMENT_H
+#endif //ULTRA_RUBY_AST_ASSIGNMENT_H

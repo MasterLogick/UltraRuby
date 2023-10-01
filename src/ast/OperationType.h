@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_OPERATIONTYPE_H
-#define ULTRA_RUBY_OPERATIONTYPE_H
+#ifndef ULTRA_RUBY_AST_OPERATIONTYPE_H
+#define ULTRA_RUBY_AST_OPERATIONTYPE_H
 
 namespace UltraRuby {
 namespace AST {
@@ -55,14 +55,15 @@ enum OperationType {
     LEX_OP_STAR,
 };
 
-constexpr static OperationType BIN_OP_REGION_START = BIN_OP_LESS;
-constexpr static OperationType BIN_OP_REGION_END = BIN_OP_QUESTION;
-constexpr static OperationType UN_OP_REGION_START = UN_OP_NOT;
-constexpr static OperationType UN_OP_REGION_END = UN_OP_LIST_UNWRAP;
-constexpr static OperationType LEXER_OP_REGION_START = LEX_OP_PLUS;
-constexpr static OperationType LEXER_OP_REGION_END = LEX_OP_STAR;
+constexpr OperationType BIN_OP_REGION_START = BIN_OP_LESS;
+constexpr OperationType BIN_OP_ASSIGNMENT_START = BIN_OP_ASSIGN;
+constexpr OperationType BIN_OP_REGION_END = BIN_OP_QUESTION;
+constexpr OperationType UN_OP_REGION_START = UN_OP_NOT;
+constexpr OperationType UN_OP_REGION_END = UN_OP_LIST_UNWRAP;
+constexpr OperationType LEXER_OP_REGION_START = LEX_OP_PLUS;
+constexpr OperationType LEXER_OP_REGION_END = LEX_OP_STAR;
 
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_OPERATIONTYPE_H
+#endif //ULTRA_RUBY_AST_OPERATIONTYPE_H

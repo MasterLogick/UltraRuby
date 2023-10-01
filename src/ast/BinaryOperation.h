@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_BINARYOPERATION_H
-#define ULTRA_RUBY_BINARYOPERATION_H
+#ifndef ULTRA_RUBY_AST_BINARYOPERATION_H
+#define ULTRA_RUBY_AST_BINARYOPERATION_H
 
 #include <memory>
 #include "Statement.h"
@@ -13,7 +13,7 @@ public:
     BinaryOperation(OperationType op, std::unique_ptr<Statement> left, std::unique_ptr<Statement> right)
             : Statement(STMT_BIN_OP), op(op), left(std::move(left)), right(std::move(right)) {}
 
-    inline char getOperator() const {
+    inline OperationType getOperator() const {
         return op;
     }
 
@@ -34,4 +34,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_BINARYOPERATION_H
+#endif //ULTRA_RUBY_AST_BINARYOPERATION_H

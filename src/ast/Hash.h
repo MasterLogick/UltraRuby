@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_HASH_H
-#define ULTRA_RUBY_HASH_H
+#ifndef ULTRA_RUBY_AST_HASH_H
+#define ULTRA_RUBY_AST_HASH_H
 
 #include <vector>
 #include <memory>
@@ -24,4 +24,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_HASH_H
+#endif //ULTRA_RUBY_AST_HASH_H

@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_BLOCK_H
-#define ULTRA_RUBY_BLOCK_H
+#ifndef ULTRA_RUBY_AST_BLOCK_H
+#define ULTRA_RUBY_AST_BLOCK_H
 
 #include <memory>
 #include <vector>
@@ -24,4 +24,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_BLOCK_H
+#endif //ULTRA_RUBY_AST_BLOCK_H

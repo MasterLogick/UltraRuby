@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_EXCEPTIONALBLOCK_H
-#define ULTRA_RUBY_EXCEPTIONALBLOCK_H
+#ifndef ULTRA_RUBY_AST_EXCEPTIONALBLOCK_H
+#define ULTRA_RUBY_AST_EXCEPTIONALBLOCK_H
 
 #include <memory>
 #include "Statement.h"
@@ -49,4 +49,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_EXCEPTIONALBLOCK_H
+#endif //ULTRA_RUBY_AST_EXCEPTIONALBLOCK_H

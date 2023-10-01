@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_CALLARGS_H
-#define ULTRA_RUBY_CALLARGS_H
+#ifndef ULTRA_RUBY_AST_CALLARGS_H
+#define ULTRA_RUBY_AST_CALLARGS_H
 
 #include <vector>
 #include <memory>
@@ -44,4 +44,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_CALLARGS_H
+#endif //ULTRA_RUBY_AST_CALLARGS_H

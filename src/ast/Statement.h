@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_STATEMENT_H
-#define ULTRA_RUBY_STATEMENT_H
+#ifndef ULTRA_RUBY_AST_STATEMENT_H
+#define ULTRA_RUBY_AST_STATEMENT_H
 
 #include "StatementType.h"
 
@@ -16,4 +16,4 @@ public:
 }
 
 
-#endif //ULTRA_RUBY_STATEMENT_H
+#endif //ULTRA_RUBY_AST_STATEMENT_H

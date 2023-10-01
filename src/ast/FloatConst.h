@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_FLOATCONST_H
-#define ULTRA_RUBY_FLOATCONST_H
+#ifndef ULTRA_RUBY_AST_FLOATCONST_H
+#define ULTRA_RUBY_AST_FLOATCONST_H
 
 #include <string>
 #include "Statement.h"
@@ -22,4 +22,4 @@ private:
 }
 }
 
-#endif //ULTRA_RUBY_FLOATCONST_H
+#endif //ULTRA_RUBY_AST_FLOATCONST_H

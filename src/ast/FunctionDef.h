@@ -1,8 +1,7 @@
-#ifndef ULTRA_RUBY_FUNCTIONDEF_H
-#define ULTRA_RUBY_FUNCTIONDEF_H
+#ifndef ULTRA_RUBY_AST_FUNCTIONDEF_H
+#define ULTRA_RUBY_AST_FUNCTIONDEF_H
 
 #include <memory>
-#include "Prototype.h"
 #include "Statement.h"
 #include "FuncDefArgs.h"
 
@@ -48,4 +47,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_FUNCTIONDEF_H
+#endif //ULTRA_RUBY_AST_FUNCTIONDEF_H

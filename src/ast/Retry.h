@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_RETRY_H
-#define ULTRA_RUBY_RETRY_H
+#ifndef ULTRA_RUBY_AST_RETRY_H
+#define ULTRA_RUBY_AST_RETRY_H
 
 #include "Statement.h"
 
@@ -14,4 +14,4 @@ public:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_RETRY_H
+#endif //ULTRA_RUBY_AST_RETRY_H

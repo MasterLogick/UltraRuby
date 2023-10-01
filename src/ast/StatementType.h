@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_STATEMENTTYPE_H
-#define ULTRA_RUBY_STATEMENTTYPE_H
+#ifndef ULTRA_RUBY_AST_STATEMENTTYPE_H
+#define ULTRA_RUBY_AST_STATEMENTTYPE_H
 
 namespace UltraRuby {
 namespace AST {
@@ -52,4 +52,4 @@ enum StatementType {
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_STATEMENTTYPE_H
+#endif //ULTRA_RUBY_AST_STATEMENTTYPE_H

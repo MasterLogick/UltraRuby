@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_FUNCDEFARGS_H
-#define ULTRA_RUBY_FUNCDEFARGS_H
+#ifndef ULTRA_RUBY_AST_FUNCDEFARGS_H
+#define ULTRA_RUBY_AST_FUNCDEFARGS_H
 
 #include <string>
 #include <map>
@@ -11,11 +11,15 @@ namespace AST {
 
 class FuncDefArgs {
 public:
+    FuncDefArgs() : args() {}
+
     FuncDefArgs(std::map<std::string, std::unique_ptr<Statement>> args) : args(std::move(args)) {}
 
     inline const std::map<std::string, std::unique_ptr<Statement>> &getArgs() const {
         return args;
     }
+
+    int getMaxArgsCount();
 
 private:
     std::map<std::string, std::unique_ptr<Statement>> args;
@@ -24,4 +28,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_FUNCDEFARGS_H
+#endif //ULTRA_RUBY_AST_FUNCDEFARGS_H

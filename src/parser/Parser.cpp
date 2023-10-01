@@ -1,35 +1,7 @@
 #include <iostream>
 #include <vector>
 #include "Parser.h"
-#include "../ast/FloatConst.h"
-#include "../ast/Variable.h"
-#include "../ast/Call.h"
-#include "../ast/BinaryOperation.h"
-#include "../ast/Prototype.h"
-#include "../ast/If.h"
-#include "../ast/UnaryOperation.h"
-#include "../ast/While.h"
-#include "../ast/String.h"
-#include "../ast/BoolConst.h"
-#include "../ast/Return.h"
-#include "../ast/Next.h"
-#include "../ast/Break.h"
-#include "../ast/Redo.h"
-#include "../ast/Retry.h"
-#include "../ast/Yield.h"
-#include "../ast/YieldSelf.h"
-#include "../ast/Case.h"
-#include "../ast/For.h"
-#include "../ast/ClassDef.h"
-#include "../ast/ClassInstanceDef.h"
-#include "../ast/ModuleDef.h"
-#include "../ast/FunctionDef.h"
-#include "../ast/Array.h"
-#include "../ast/FuncDefArgs.h"
-#include "../ast/IntegerConst.h"
-#include "../ast/Symbol.h"
-#include "../ast/Hash.h"
-#include "../ast/ExceptionalBlock.h"
+#include "../ast/AST.h"
 
 namespace UltraRuby {
 namespace Parser {
@@ -1052,6 +1024,7 @@ Lexer::TokenType Parser::nextLexerToken(bool skipSpacesF) {
     if (skipSpacesF) {
         skipSpaces();
     }
+    return currentLexerToken;
 }
 
 std::unique_ptr<AST::Statement> Parser::parseBinOpRight(std::unique_ptr<AST::Statement> left, int precedence) {
@@ -1199,6 +1172,7 @@ AST::OperationType Parser::convertToUnOp(AST::OperationType type) {
 
 Lexer::TokenType Parser::prevLexerToken() {
     currentLexerToken = queue->getPrevToken();
+    return currentLexerToken;
 }
 
 Lexer::TokenType Parser::rewindTo(int ptr) {

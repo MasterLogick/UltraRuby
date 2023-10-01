@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_NEXT_H
-#define ULTRA_RUBY_NEXT_H
+#ifndef ULTRA_RUBY_AST_NEXT_H
+#define ULTRA_RUBY_AST_NEXT_H
 
 #include <memory>
 #include "Statement.h"
@@ -20,4 +20,4 @@ private:
 
 } // UltraRuby
 } // AST
-#endif //ULTRA_RUBY_NEXT_H
+#endif //ULTRA_RUBY_AST_NEXT_H

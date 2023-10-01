@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_UNARYOPERATION_H
-#define ULTRA_RUBY_UNARYOPERATION_H
+#ifndef ULTRA_RUBY_AST_UNARYOPERATION_H
+#define ULTRA_RUBY_AST_UNARYOPERATION_H
 
 #include <memory>
 #include "Statement.h"
@@ -29,4 +29,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_UNARYOPERATION_H
+#endif //ULTRA_RUBY_AST_UNARYOPERATION_H

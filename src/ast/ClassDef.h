@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_CLASSDEF_H
-#define ULTRA_RUBY_CLASSDEF_H
+#ifndef ULTRA_RUBY_AST_CLASSDEF_H
+#define ULTRA_RUBY_AST_CLASSDEF_H
 
 #include <string>
 #include <memory>
@@ -43,4 +43,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_CLASSDEF_H
+#endif //ULTRA_RUBY_AST_CLASSDEF_H

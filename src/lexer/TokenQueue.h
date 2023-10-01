@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_TOKENQUEUE_H
-#define ULTRA_RUBY_TOKENQUEUE_H
+#ifndef ULTRA_RUBY_LEXER_TOKENQUEUE_H
+#define ULTRA_RUBY_LEXER_TOKENQUEUE_H
 
 #include <memory>
 #include <utility>
@@ -70,4 +70,4 @@ private:
 } // UltraRuby
 } // Lexer
 
-#endif //ULTRA_RUBY_TOKENQUEUE_H
+#endif //ULTRA_RUBY_LEXER_TOKENQUEUE_H

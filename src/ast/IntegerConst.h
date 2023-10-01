@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_INTEGERCONST_H
-#define ULTRA_RUBY_INTEGERCONST_H
+#ifndef ULTRA_RUBY_AST_INTEGERCONST_H
+#define ULTRA_RUBY_AST_INTEGERCONST_H
 
 #include <string>
 #include "Statement.h"
@@ -22,4 +22,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_INTEGERCONST_H
+#endif //ULTRA_RUBY_AST_INTEGERCONST_H

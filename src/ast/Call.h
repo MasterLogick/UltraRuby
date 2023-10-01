@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_CALL_H
-#define ULTRA_RUBY_CALL_H
+#ifndef ULTRA_RUBY_AST_CALL_H
+#define ULTRA_RUBY_AST_CALL_H
 
 #include <string>
 #include <utility>
@@ -37,4 +37,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_CALL_H
+#endif //ULTRA_RUBY_AST_CALL_H

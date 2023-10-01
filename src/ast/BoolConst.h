@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_BOOLCONST_H
-#define ULTRA_RUBY_BOOLCONST_H
+#ifndef ULTRA_RUBY_AST_BOOLCONST_H
+#define ULTRA_RUBY_AST_BOOLCONST_H
 
 #include "Statement.h"
 
@@ -21,4 +21,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_BOOLCONST_H
+#endif //ULTRA_RUBY_AST_BOOLCONST_H

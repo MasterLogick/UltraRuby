@@ -1,13 +1,9 @@
-#ifndef ULTRA_RUBY_PARSER_H
-#define ULTRA_RUBY_PARSER_H
+#ifndef ULTRA_RUBY_PARSER_PARSER_H
+#define ULTRA_RUBY_PARSER_PARSER_H
 
 #include <map>
 #include "../lexer/Lexer.h"
-#include "../ast/Statement.h"
-#include "../ast/OperationType.h"
-#include "../ast/Block.h"
-#include "../ast/CallArgs.h"
-#include "../ast/FuncDefArgs.h"
+#include "../ast/ASTClassDecls.h"
 
 namespace UltraRuby {
 namespace Parser {
@@ -210,4 +206,4 @@ private:
 } // UltraRuby
 } // Parser
 
-#endif //ULTRA_RUBY_PARSER_H
+#endif //ULTRA_RUBY_PARSER_PARSER_H

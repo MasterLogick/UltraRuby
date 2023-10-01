@@ -18,7 +18,6 @@ add_executable(ultra_ruby src/main.cpp
         src/ast/BinaryOperation.h
         src/ast/Call.h
         src/ast/FunctionDef.h
-        src/ast/Prototype.h
         src/parser/Parser.cpp
         src/parser/Parser.h
         src/ir/CodeGenerator.cpp
@@ -59,6 +58,33 @@ add_executable(ultra_ruby src/main.cpp
         src/lexer/TokenQueue.cpp
         src/ast/Symbol.h
         src/ast/ExceptionalBlock.h
+        src/ir/Scope.cpp
+        src/ir/Scope.h
+        src/lang/Class.cpp
+        src/lang/Class.h
+        src/lang/HashInternal.cpp
+        src/lang/HashInternal.h
+        src/lang/Object.cpp
+        src/lang/Object.h
+        src/lang/FunctionInfo.cpp
+        src/lang/FunctionInfo.h
+        src/lang/String.cpp
+        src/lang/String.h
+        src/lang/Heap.cpp
+        src/lang/Heap.h
+        src/lang/BasicClasses.cpp
+        src/lang/BasicClasses.h
+        src/lang/Symbol.cpp
+        src/lang/Symbol.h
+        src/ast/AST.h
+        src/ast/ASTClassDecls.h
+        src/lang/Array.cpp
+        src/lang/Array.h
+        src/lang/ObjectVector.cpp
+        src/lang/ObjectVector.h
+        src/ast/FuncDefArgs.cpp
+        src/lang/Hash.cpp
+        src/lang/Hash.h
 )
 message(${LLVM_AVAILABLE_LIBS})
 llvm_map_components_to_libnames(llvm_libs core orcjit native)

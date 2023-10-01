@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_TOKEN_H
-#define ULTRA_RUBY_TOKEN_H
+#ifndef ULTRA_RUBY_LEXER_TOKEN_H
+#define ULTRA_RUBY_LEXER_TOKEN_H
 
 #include <string>
 #include "TokenType.h"
@@ -17,4 +17,4 @@ struct Token {
 } // UltraRuby
 } // Lexer
 
-#endif //ULTRA_RUBY_TOKEN_H
+#endif //ULTRA_RUBY_LEXER_TOKEN_H

@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_MODULEDEF_H
-#define ULTRA_RUBY_MODULEDEF_H
+#ifndef ULTRA_RUBY_AST_MODULEDEF_H
+#define ULTRA_RUBY_AST_MODULEDEF_H
 
 #include <string>
 #include <memory>
@@ -32,4 +32,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_MODULEDEF_H
+#endif //ULTRA_RUBY_AST_MODULEDEF_H

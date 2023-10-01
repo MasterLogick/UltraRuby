@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_WHILE_H
-#define ULTRA_RUBY_WHILE_H
+#ifndef ULTRA_RUBY_AST_WHILE_H
+#define ULTRA_RUBY_AST_WHILE_H
 
 #include <memory>
 #include "Statement.h"
@@ -28,4 +28,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_WHILE_H
+#endif //ULTRA_RUBY_AST_WHILE_H

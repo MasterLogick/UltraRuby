@@ -1,3 +1,4 @@
+#include <cassert>
 #include "TokenType.h"
 
 const char *UltraRuby::Lexer::strTokenType(UltraRuby::Lexer::TokenType type) {
@@ -124,5 +125,7 @@ const char *UltraRuby::Lexer::strTokenType(UltraRuby::Lexer::TokenType type) {
             return "TOK_AT_SIGN";
         case TOK_HASH_ASSOC:
             return "TOK_HASH_ASSOC";
+        default:
+            assert(0);
     }
 }

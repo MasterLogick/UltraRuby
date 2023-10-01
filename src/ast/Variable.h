@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_VARIABLE_H
-#define ULTRA_RUBY_VARIABLE_H
+#ifndef ULTRA_RUBY_AST_VARIABLE_H
+#define ULTRA_RUBY_AST_VARIABLE_H
 
 #include <string>
 #include "Statement.h"
@@ -22,4 +22,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_VARIABLE_H
+#endif //ULTRA_RUBY_AST_VARIABLE_H

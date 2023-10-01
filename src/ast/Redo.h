@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_REDO_H
-#define ULTRA_RUBY_REDO_H
+#ifndef ULTRA_RUBY_AST_REDO_H
+#define ULTRA_RUBY_AST_REDO_H
 
 #include <memory>
 #include "Statement.h"
@@ -15,4 +15,4 @@ public:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_REDO_H
+#endif //ULTRA_RUBY_AST_REDO_H

@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_CASE_H
-#define ULTRA_RUBY_CASE_H
+#ifndef ULTRA_RUBY_AST_CASE_H
+#define ULTRA_RUBY_AST_CASE_H
 
 #include <memory>
 #include <vector>
@@ -32,4 +32,4 @@ private:
 } // UltraRuby
 } // AST
 
-#endif //ULTRA_RUBY_CASE_H
+#endif //ULTRA_RUBY_AST_CASE_H

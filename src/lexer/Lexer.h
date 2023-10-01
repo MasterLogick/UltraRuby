@@ -1,5 +1,5 @@
-#ifndef ULTRA_RUBY_LEXER_H
-#define ULTRA_RUBY_LEXER_H
+#ifndef ULTRA_RUBY_LEXER_LEXER_H
+#define ULTRA_RUBY_LEXER_LEXER_H
 
 #include <memory>
 #include <utility>
@@ -32,4 +32,4 @@ private:
 
 }
 
-#endif //ULTRA_RUBY_LEXER_H
+#endif //ULTRA_RUBY_LEXER_LEXER_H
