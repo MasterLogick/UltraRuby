@@ -8,7 +8,16 @@ namespace Lang {
 
 class BasicClasses {
 public:
+    static Class *BasicObjectClass;
+    static Class *ObjectClass;
+    static Class *ClassClass;
     static Class *StringClass;
+    static Class *SymbolClass;
+    static Class *NilClass;
+    static Class *TrueClass;
+    static Class *FalseClass;
+
+    static void init();
 };
 
 } // UltraRuby

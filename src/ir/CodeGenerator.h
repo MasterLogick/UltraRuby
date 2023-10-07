@@ -22,11 +22,7 @@ class CodeGenerator {
 public:
     CodeGenerator();
 
-    void codegenProgram(const std::unique_ptr<AST::FunctionDef> &topLevelDecl);
-
-    inline const std::unique_ptr<llvm::Module> &getModule() const {
-        return module;
-    }
+    llvm::Function *codegenProgram(AST::FunctionDef *topLevelDecl);
 
     void debugPrintModuleIR();
 
@@ -35,93 +31,92 @@ public:
     void runPass(llvm::legacy::PassManager &manager);
 
 private:
-    llvm::Value *codegenArray(const std::unique_ptr<AST::Array> &array);
+    llvm::Value *codegenArray(AST::Array *array);
 
-    llvm::Value *codegenAssignment(const std::unique_ptr<AST::Assignment> &assignment);
+    llvm::Value *codegenBinaryOperation(AST::BinaryOperation *binOp);
 
-    llvm::Value *codegenBinaryOperation(const std::unique_ptr<AST::BinaryOperation> &binOp);
-
-    llvm::Value *codegenBlock(const std::unique_ptr<AST::Block> &block);
+    llvm::Value *codegenBlock(AST::Block *block);
 
     llvm::Constant *codegenBoolConst(bool val);
 
-    llvm::Value *codegenBreak();
+    llvm::Value *codegenBreak(AST::Break *breakAst);
 
-    llvm::Value *codegenCall(const std::unique_ptr<AST::Call> &call);
+    llvm::Value *codegenCall(AST::Call *call);
 
-    llvm::Value *codegenClassDef(const std::unique_ptr<AST::ClassDef> &classDef);
+    llvm::Value *codegenCase(AST::Case *caseAst);
 
-    llvm::Value *codegenClassInstanceDef(const std::unique_ptr<AST::ClassInstanceDef> &classInstanceDef);
+    llvm::Value *codegenClassDef(AST::ClassDef *classDef);
 
-    llvm::Value *exceptionalBlock(const std::unique_ptr<AST::ExceptionalBlock> &exceptionalBlock);
+    llvm::Value *codegenClassInstanceDef(AST::ClassInstanceDef *classInstanceDef);
 
-    llvm::Constant *codegenFloatConst(const std::unique_ptr<AST::FloatConst> &floatConst);
+    llvm::Value *codegenExceptionalBlock(AST::ExceptionalBlock *exceptionalBlock);
 
-    llvm::Value *codegenFor(const std::unique_ptr<AST::For> &forAst);
+    llvm::Value *codegenFloatConst(AST::FloatConst *floatConst);
 
-    llvm::Value *codegenFunctionDef(const std::unique_ptr<AST::FunctionDef> &functionDef);
+    llvm::Value *codegenFor(AST::For *forAst);
 
-    llvm::Value *codegenHash(const std::unique_ptr<AST::Hash> &hash);
+    llvm::Value *codegenFunctionDef(AST::FunctionDef *functionDef);
 
-    llvm::Value *codegenIf(const std::unique_ptr<AST::If> &ifAst);
+    llvm::Value *codegenHash(AST::Hash *hash);
 
-    llvm::Constant *codegenIntegerConst(const std::unique_ptr<AST::IntegerConst> &intConst);
+    llvm::Value *codegenIf(AST::If *ifAst);
 
-    llvm::Value *codegenModuleDef(const std::unique_ptr<AST::ModuleDef> &moduleDef);
+    llvm::Value *codegenIntegerConst(AST::IntegerConst *intConst);
 
-    llvm::Value *codegenNext();
+    llvm::Value *codegenModuleDef(AST::ModuleDef *moduleDef);
+
+    llvm::Value *codegenNext(AST::Next *next);
 
     llvm::Value *codegenRedo();
 
     llvm::Value *codegenRetry();
 
-    llvm::Value *codegenReturn(const std::unique_ptr<AST::Return> &returnAst);
+    llvm::Value *codegenReturn(AST::Return *returnAst);
 
-    llvm::Value *codegenStatement(const std::unique_ptr<AST::Statement> &statement);
+    llvm::Value *codegenStatement(AST::Statement *statement);
 
-    llvm::Constant *codegenString(const std::unique_ptr<AST::String> &str);
+    llvm::Constant *codegenString(AST::String *str);
 
-    llvm::Constant *codegenSymbol(const std::unique_ptr<AST::Symbol> &symbol);
+    llvm::Constant *codegenSymbol(AST::Symbol *symbol);
 
-    llvm::Value *codegenUnaryOperation(const std::unique_ptr<AST::UnaryOperation> &unaryOperation);
+    llvm::Value *codegenUnaryOperation(AST::UnaryOperation *unaryOperation);
 
-    llvm::Value *codegenVariable(const std::unique_ptr<AST::Variable> &variable);
+    llvm::Value *codegenVariable(AST::Variable *variable);
 
-    llvm::Value *codegenWhile(const std::unique_ptr<AST::While> &whileAst);
+    llvm::Value *codegenWhile(AST::While *whileAst);
 
-    llvm::Value *codegenYield(const std::unique_ptr<AST::Yield> &yield);
+    llvm::Value *codegenYield(AST::Yield *yield);
 
     llvm::Value *codegenYieldSelf();
 
 
-    void declareFunction(const std::unique_ptr<AST::FunctionDef> &functionDef);
+    llvm::Value *codegenCastToBoolInt1(llvm::Value *ptr);
 
-    llvm::Function *codegenFunctionBody(const std::unique_ptr<AST::FunctionDef> &functionDef);
+    llvm::Function *codegenFunctionBody(AST::FunctionDef *functionDef);
 
-    bool codegenArgsProcessingPreamble(const std::unique_ptr<AST::FunctionDef> &functionDef);
+    llvm::Function *codegenFunction(AST::FunctionDef *functionDef);
 
-    llvm::Value *codegenCall(llvm::Value *self, llvm::Constant *sym, std::vector<llvm::Value *> args);
+    llvm::Value *codegenLangCall(llvm::Function *langFunction, std::vector<llvm::Value *> args);
+
+    bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
 
     llvm::Constant *codegenPointer(void *data);
 
     void declareExternLangFunctions();
 
     void logError(const char *error);
-//
-//    llvm::Function *codegenPrototype(const std::unique_ptr<AST::Prototype> &prototype);
-//
-//    llvm::Value *codegenNumber(const std::unique_ptr<AST::FloatConst> &number);
-//
-//    llvm::Value *codegenVariable(const std::unique_ptr<AST::Variable> &variable);
-//
-//    llvm::Value *codegenBinaryExpression(const std::unique_ptr<AST::BinaryOperation> &binExpr);
-//
-//    llvm::Value *codegenCall(const std::unique_ptr<AST::Call> &call);
 
     std::unique_ptr<llvm::LLVMContext> context;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
     Scope *scope;
+
+    llvm::PointerType *voidpTy;
+    llvm::Type *int64Ty;
+
+    llvm::Constant *nilConst;
+    llvm::Constant *trueConst;
+    llvm::Constant *falseConst;
 
     llvm::Function *langArrayAlloc;
     llvm::Function *langHashAlloc;
@@ -132,6 +127,7 @@ private:
     llvm::Function *langObjectDefineInstanceMethod;
     llvm::Function *langObjectDefineSingletonMethod;
     llvm::Function *langClassDefineClass;
+    llvm::Function *langModuleDefineModule;
 };
 
 } // UltraRuby

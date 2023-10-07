@@ -8,14 +8,14 @@ namespace UltraRuby {
 namespace AST {
 class Next : public Statement {
 public:
-    Next(std::unique_ptr<Statement> retVal) : Statement(STMT_NEXT), retVal(std::move(retVal)) {}
+    Next(CallArgs *callArgs) : Statement(STMT_NEXT), callArgs(callArgs) {}
 
-    inline const std::unique_ptr<Statement> &getRetVal() const {
-        return retVal;
+    inline CallArgs *getCallArgs() const {
+        return callArgs;
     }
 
 private:
-    std::unique_ptr<Statement> retVal;
+    CallArgs *callArgs;
 };
 
 } // UltraRuby

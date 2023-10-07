@@ -6,8 +6,8 @@
 namespace UltraRuby {
 namespace Parser {
 
-std::unique_ptr<AST::Block> Parser::parseProgram() {
-    std::vector<std::unique_ptr<AST::Statement>> list;
+AST::Block *Parser::parseProgram() {
+    std::vector<AST::Statement *> list;
     while (currentLexerToken != Lexer::TOK_EOF) {
         skipTerms();
         if (currentLexerToken == Lexer::TOK_EOF) {
@@ -17,12 +17,12 @@ std::unique_ptr<AST::Block> Parser::parseProgram() {
         if (v == nullptr) {
             break;
         }
-        list.push_back(std::move(v));
+        list.push_back(v);
     }
-    return std::make_unique<AST::Block>(std::move(list));
+    return new AST::Block(std::move(list));
 }
 
-std::unique_ptr<AST::Statement> Parser::parseTopStatement() {
+AST::Statement *Parser::parseTopStatement() {
     if (currentLexerToken == Lexer::TOK_BEGIN_UPPER) {
         nextLexerToken(true);
         if (currentLexerToken != Lexer::TOK_BRACE_LEFT) {
@@ -40,7 +40,7 @@ std::unique_ptr<AST::Statement> Parser::parseTopStatement() {
     return parseStatement();
 }
 
-std::unique_ptr<AST::Statement> Parser::parseStatement(int opPrecedence) {
+AST::Statement *Parser::parseStatement(int opPrecedence) {
     auto prim = parseUncontrolledStatement(opPrecedence);
     if (prim == nullptr) {
         return nullptr;
@@ -50,30 +50,25 @@ std::unique_ptr<AST::Statement> Parser::parseStatement(int opPrecedence) {
             case Lexer::TOK_IF: {
                 nextLexerToken(true);
                 auto cond = parseUncontrolledStatement();
-                prim = std::make_unique<AST::If>(std::move(cond), std::move(prim), nullptr);
+                prim = new AST::If(cond, prim, nullptr);
                 continue;
             }
             case Lexer::TOK_WHILE: {
                 nextLexerToken(true);
                 auto cond = parseUncontrolledStatement();
-                prim = std::make_unique<AST::While>(std::move(cond), std::move(prim));
+                prim = new AST::While(cond, prim);
                 continue;
             }
             case Lexer::TOK_UNLESS: {
                 nextLexerToken(true);
                 auto cond = parseUncontrolledStatement();
-                prim = std::make_unique<AST::If>(
-                        std::make_unique<AST::UnaryOperation>(AST::OperationType::UN_OP_NOT, std::move(cond)),
-                        std::move(prim),
-                        nullptr);
+                prim = new AST::If(new AST::UnaryOperation(AST::OperationType::UN_OP_NOT, cond), prim, nullptr);
                 continue;
             }
             case Lexer::TOK_UNTIL: {
                 nextLexerToken(true);
                 auto cond = parseUncontrolledStatement();
-                prim = std::make_unique<AST::While>(
-                        std::make_unique<AST::UnaryOperation>(AST::OperationType::UN_OP_NOT, std::move(cond)),
-                        std::move(prim));
+                prim = new AST::While(new AST::UnaryOperation(AST::OperationType::UN_OP_NOT, cond), prim);
                 continue;
             }
         }
@@ -82,7 +77,7 @@ std::unique_ptr<AST::Statement> Parser::parseStatement(int opPrecedence) {
     return prim;
 }
 
-std::unique_ptr<AST::Statement> Parser::parseUncontrolledStatement(int opPrecedence) {
+AST::Statement *Parser::parseUncontrolledStatement(int opPrecedence) {
     skipSpaces();
     if (!primaryTest()) {
         return nullptr;
@@ -91,7 +86,7 @@ std::unique_ptr<AST::Statement> Parser::parseUncontrolledStatement(int opPrecede
     if (prim == nullptr) {
         return nullptr;
     }
-    return parseBinOpRight(std::move(prim), opPrecedence);
+    return parseBinOpRight(prim, opPrecedence);
 }
 
 bool Parser::primaryTest() {
@@ -102,6 +97,7 @@ bool Parser::primaryTest() {
         case Lexer::TOK_TRUE:
         case Lexer::TOK_FALSE:
         case Lexer::TOK_SELF:
+        case Lexer::TOK_NIL:
         case Lexer::TOK_BEGIN:
         case Lexer::TOK_PAREN_LEFT:
         case Lexer::TOK_BRACKET_LEFT:
@@ -132,7 +128,7 @@ bool Parser::primaryTest() {
     }
 }
 
-std::unique_ptr<AST::Statement> Parser::parsePrimary() {
+AST::Statement *Parser::parsePrimary() {
     auto obj = parsePrimaryObject();
     if (obj == nullptr) {
         return nullptr;
@@ -156,13 +152,13 @@ std::unique_ptr<AST::Statement> Parser::parsePrimary() {
             if (args == nullptr) {
                 return nullptr;
             }
-            obj = std::make_unique<AST::Call>(name, std::move(args), std::move(obj));
+            obj = new AST::Call(std::move(name), args, obj);
         } else if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
             auto args = parseCallArgs();
             if (args == nullptr) {
                 return nullptr;
             }
-            obj = std::make_unique<AST::Call>(std::string(), std::move(args), std::move(obj));
+            obj = new AST::Call(std::string(), args, obj);
         } else {
             rewindTo(ptr);
             return obj;
@@ -170,22 +166,22 @@ std::unique_ptr<AST::Statement> Parser::parsePrimary() {
     }
 }
 
-std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
+AST::Statement *Parser::parsePrimaryObject() {
     switch (currentLexerToken) {
         case Lexer::TOK_COMMON_STRING: {
             std::string s = queue->getStr();
             nextLexerToken();
-            return std::make_unique<AST::String>(std::move(s));
+            return new AST::String(std::move(s));
         }
         case Lexer::TOK_INTEGER: {
             std::string val = queue->getStr();
             nextLexerToken();
-            return std::make_unique<AST::IntegerConst>(std::move(val));
+            return new AST::IntegerConst(std::move(val));
         }
         case Lexer::TOK_FLOAT: {
             std::string val = queue->getStr();
             nextLexerToken();
-            return std::make_unique<AST::FloatConst>(std::move(val));
+            return new AST::FloatConst(std::move(val));
         }
         case Lexer::TOK_COLON: {
             nextLexerToken();
@@ -195,19 +191,23 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             }
             std::string sym = queue->getStr();
             nextLexerToken();
-            return std::make_unique<AST::Symbol>(std::move(sym));
+            return new AST::Symbol(std::move(sym));
         }
         case Lexer::TOK_TRUE: {
             nextLexerToken();
-            return std::make_unique<AST::BoolConst>(true);
+            return new AST::BoolConst(true);
         }
         case Lexer::TOK_FALSE: {
             nextLexerToken();
-            return std::make_unique<AST::BoolConst>(false);
+            return new AST::BoolConst(false);
         }
         case Lexer::TOK_SELF: {
             nextLexerToken();
-            return std::make_unique<AST::Variable>("self");
+            return new AST::Variable("self");
+        }
+        case Lexer::TOK_NIL: {
+            nextLexerToken();
+            return new AST::Variable("nil");
         }
         case Lexer::TOK_BEGIN: {
             nextLexerToken();
@@ -215,10 +215,10 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             if (mainBlock == nullptr) {
                 return nullptr;
             }
-            std::vector<std::tuple<std::unique_ptr<AST::Statement>, std::string, std::unique_ptr<AST::Block>>> rescues;
+            std::vector<std::tuple<AST::Statement *, std::string, AST::Block *>> rescues;
             while (currentLexerToken == Lexer::TOK_RESCUE) {
                 nextLexerToken(true);
-                std::unique_ptr<AST::Statement> type(nullptr);
+                AST::Statement *type(nullptr);
                 std::string var;
                 if (currentLexerToken == Lexer::TOK_HASH_ASSOC) {
                     nextLexerToken(true);
@@ -246,9 +246,9 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 }
                 nextLexerToken();
                 auto body = parseCompStatement();
-                rescues.emplace_back(std::move(type), std::move(var), std::move(body));
+                rescues.emplace_back(type, std::move(var), body);
             }
-            std::unique_ptr<AST::Block> elseBlock(nullptr);
+            AST::Block *elseBlock(nullptr);
             if (currentLexerToken == Lexer::TOK_ELSE) {
                 nextLexerToken();
                 elseBlock = parseCompStatement();
@@ -256,7 +256,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                     return nullptr;
                 }
             }
-            std::unique_ptr<AST::Block> ensureBlock(nullptr);
+            AST::Block *ensureBlock(nullptr);
             if (currentLexerToken == Lexer::TOK_ENSURE) {
                 nextLexerToken();
                 ensureBlock = parseCompStatement();
@@ -268,11 +268,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return std::make_unique<AST::ExceptionalBlock>(
-                    std::move(mainBlock),
-                    std::move(rescues),
-                    std::move(elseBlock),
-                    std::move(ensureBlock));
+            return new AST::ExceptionalBlock(mainBlock, rescues, elseBlock, ensureBlock);
         }
         case Lexer::TOK_PAREN_LEFT: {
             nextLexerToken();
@@ -295,43 +291,36 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
         case Lexer::TOK_RETURN: {
             nextLexerToken();
             skipSpaces();
-            if (isATerm(currentLexerToken)) {
-                return std::make_unique<AST::Return>(nullptr);
-            }
-            return std::make_unique<AST::Return>(parseStatement());
+            return new AST::Return(parseCallArgs());
         }
         case Lexer::TOK_NEXT: {
             nextLexerToken();
             skipSpaces();
             if (isATerm(currentLexerToken)) {
-                return std::make_unique<AST::Next>(nullptr);
+                return new AST::Next(nullptr);
             }
-            return std::make_unique<AST::Next>(parseStatement());
+            return new AST::Next(parseCallArgs());
         }
         case Lexer::TOK_BREAK: {
             nextLexerToken();
             skipSpaces();
-            if (isATerm(currentLexerToken)) {
-                return std::make_unique<AST::Break>(nullptr);
-            }
-            return std::make_unique<AST::Break>(parseStatement());
+            return new AST::Break(parseCallArgs());
         }
         case Lexer::TOK_REDO: {
             nextLexerToken();
-            return std::make_unique<AST::Redo>();
+            return new AST::Redo();
         }
         case Lexer::TOK_RETRY: {
             nextLexerToken();
-            return std::make_unique<AST::Retry>();
+            return new AST::Retry();
         }
         case Lexer::TOK_YIELD: {
             nextLexerToken();
-            auto args = parseCallArgs();
-            return std::make_unique<AST::Yield>(std::move(args));
+            return new AST::Yield(parseCallArgs());
         }
         case Lexer::TOK_YIELD_SELF: {
             nextLexerToken();
-            return std::make_unique<AST::YieldSelf>();
+            return new AST::YieldSelf();
         }
         case Lexer::TOK_IF: {
             nextLexerToken();
@@ -343,9 +332,9 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             nextLexerToken(true);
             auto body = parseCompStatement();
             if (currentLexerToken == Lexer::TOK_END) {
-                return std::make_unique<AST::If>(std::move(cond), std::move(body), nullptr);
+                return new AST::If(cond, body, nullptr);
             }
-            return parseIfBranches(std::move(cond), std::move(body));
+            return parseIfBranches(cond, body);
         }
         case Lexer::TOK_UNLESS: {
             nextLexerToken();
@@ -360,10 +349,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return std::make_unique<AST::If>(
-                    std::make_unique<AST::UnaryOperation>(AST::UN_OP_NOT, std::move(cond)),
-                    std::move(body), nullptr);
-
+            return new AST::If(new AST::UnaryOperation(AST::UN_OP_NOT, cond), body, nullptr);
         }
         case Lexer::TOK_WHILE: {
             nextLexerToken();
@@ -378,7 +364,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return std::make_unique<AST::While>(std::move(cond), std::move(body));
+            return new AST::While(cond, body);
         }
         case Lexer::TOK_UNTIL: {
             nextLexerToken();
@@ -393,17 +379,15 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return std::make_unique<AST::While>(
-                    std::make_unique<AST::UnaryOperation>(AST::UN_OP_NOT, std::move(cond)),
-                    std::move(body));
+            return new AST::While(new AST::UnaryOperation(AST::UN_OP_NOT, cond), body);
         }
         case Lexer::TOK_CASE: {
             nextLexerToken(true);
-            std::unique_ptr<AST::Statement> arg(nullptr);
+            AST::Statement *arg(nullptr);
             if (!isATerm(currentLexerToken)) {
                 arg = parseStatement();
             }
-            std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> cases;
+            std::vector<AST::CaseWhereBlock *> cases;
             do {
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_WHEN) {
@@ -424,10 +408,10 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 if (body == nullptr) {
                     return nullptr;
                 }
-                cases.emplace_back(std::move(cond), std::move(body));
+                cases.push_back(new AST::CaseWhereBlock(cond, body));
             } while (currentLexerToken != Lexer::TOK_END);
             nextLexerToken();
-            return std::make_unique<AST::Case>(std::move(arg), std::move(cases));
+            return new AST::Case(arg, std::move(cases));
         }
         case Lexer::TOK_FOR: {
             nextLexerToken(true);
@@ -457,7 +441,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 return nullptr;
             }
             nextLexerToken();
-            return std::make_unique<AST::For>(std::move(var), std::move(expr), std::move(body));
+            return new AST::For(var, expr, body);
         }
         case Lexer::TOK_CLASS: {
             nextLexerToken(true);
@@ -481,7 +465,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                     return nullptr;
                 }
                 nextLexerToken();
-                return std::make_unique<AST::ClassInstanceDef>(std::move(instance), std::move(definition));
+                return new AST::ClassInstanceDef(instance, definition);
             }
             std::string classIdentifier;
             if (!parseVariable(classIdentifier, true)) {
@@ -503,10 +487,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return std::make_unique<AST::ClassDef>(
-                    std::move(classIdentifier),
-                    std::move(superclassIdentifier),
-                    std::move(definition));
+            return new AST::ClassDef(classIdentifier, superclassIdentifier, definition);
         }
         case Lexer::TOK_MODULE: {
             nextLexerToken(true);
@@ -523,14 +504,12 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 return nullptr;
             }
             nextLexerToken();
-            return std::make_unique<AST::ModuleDef>(
-                    std::move(moduleIdentifier),
-                    std::move(definition));
+            return new AST::ModuleDef(moduleIdentifier, definition);
         }
         case Lexer::TOK_DEF: {
             nextLexerToken();
             skipTerms();
-            std::unique_ptr<AST::Statement> singleton(nullptr);
+            AST::Statement *singleton(nullptr);
             std::string functionName;
             if (currentLexerToken == Lexer::TOK_IDENTIFIER) {
                 //todo parse keyword variables
@@ -545,7 +524,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                         return nullptr;
                     }
                     functionName = queue->getStr();
-                    singleton = std::make_unique<AST::Variable>(label);
+                    singleton = new AST::Variable(label);
                 } else {
                     functionName = label;
                 }
@@ -581,7 +560,10 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 nextLexerToken();
                 hasParen = true;
             }
-            auto args = parseFuncDefArgs(hasParen);
+            std::vector<AST::FuncDefArg *> args;
+            if (!parseFuncDefArgs(args, hasParen)) {
+                return nullptr;
+            }
             if (hasParen) {
                 if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
                     logError("expected \")\"");
@@ -595,11 +577,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
                 return nullptr;
             }
             nextLexerToken();
-            return std::make_unique<AST::FunctionDef>(
-                    std::move(functionName),
-                    std::move(args),
-                    std::move(singleton),
-                    std::move(body));
+            return new AST::FunctionDef(functionName, args, singleton, body);
         }
         case Lexer::TOK_OP: {
             auto op = convertToUnOp(queue->getOperation());
@@ -615,7 +593,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             if (expr == nullptr) {
                 return nullptr;
             }
-            return std::make_unique<AST::UnaryOperation>(op, std::move(expr));
+            return new AST::UnaryOperation(op, expr);
         }
         case Lexer::TOK_NOT: {
             nextLexerToken();
@@ -623,7 +601,7 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             if (expr == nullptr) {
                 return nullptr;
             }
-            return std::make_unique<AST::UnaryOperation>(AST::UN_OP_NOT, std::move(expr));
+            return new AST::UnaryOperation(AST::UN_OP_NOT, expr);
         }
         case Lexer::TOK_IDENTIFIER:
         case Lexer::TOK_DOUBLE_COLON: {
@@ -631,12 +609,11 @@ std::unique_ptr<AST::Statement> Parser::parsePrimaryObject() {
             if (!parseVariable(label, false)) {
                 return nullptr;
             }
-//            std::cout << queue->getPtr() << std::endl;
             auto args = parseCallArgs();
             if (args->hasBrackets() || args->hasParens() || !args->getArgs().empty()) {
-                return std::make_unique<AST::Call>(std::move(label), std::move(args), nullptr);
+                return new AST::Call(label, args, nullptr);
             } else {
-                return std::make_unique<AST::Variable>(std::move(label));
+                return new AST::Variable(label);
             }
         }
         default: {
@@ -666,29 +643,29 @@ bool Parser::isATerm(Lexer::TokenType token) {
     return token == Lexer::TOK_NEWLINE || token == Lexer::TOK_SPACE || token == Lexer::TOK_SEMICOLON;
 }
 
-std::unique_ptr<AST::Block> Parser::parseCompStatement() {
-    std::vector<std::unique_ptr<AST::Statement>> block;
+AST::Block *Parser::parseCompStatement() {
+    std::vector<AST::Statement *> block;
     skipTerms();
     while (true) {
         auto stmt = parseStatement();
         if (stmt == nullptr) {
             break;
         } else {
-            block.push_back(std::move(stmt));
+            block.push_back(stmt);
         }
         skipTerms();
     }
-    return std::make_unique<AST::Block>(std::move(block));
+    return new AST::Block(std::move(block));
 }
 
-std::unique_ptr<AST::Statement> Parser::parseArray() {
-    std::vector<std::unique_ptr<AST::Statement>> elements;
+AST::Statement *Parser::parseArray() {
+    std::vector<AST::Statement *> elements;
     while (true) {
         auto el = parseStatement();
         if (el == nullptr) {
             return nullptr;
         }
-        elements.push_back(std::move(el));
+        elements.push_back(el);
         if (currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
             break;
         }
@@ -697,11 +674,11 @@ std::unique_ptr<AST::Statement> Parser::parseArray() {
             return nullptr;
         }
     }
-    return std::make_unique<AST::Array>(std::move(elements));
+    return new AST::Array(std::move(elements));
 }
 
-std::unique_ptr<AST::Statement> Parser::parseHash() {
-    std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> hash;
+AST::Statement *Parser::parseHash() {
+    std::vector<std::pair<AST::Statement *, AST::Statement *>> hash;
     while (true) {
         skipTerms();
         if (currentLexerToken == Lexer::TOK_BRACE_RIGHT) {
@@ -722,14 +699,14 @@ std::unique_ptr<AST::Statement> Parser::parseHash() {
             prevLexerToken();
         }
         if (symbolAssoc) {
-            auto symbol = std::make_unique<AST::Symbol>(queue->getStr());
+            auto symbol = new AST::Symbol(queue->getStr());
             nextLexerToken(true);
             nextLexerToken(true);
             auto val = parseStatement();
             if (val == nullptr) {
                 return nullptr;
             }
-            hash.emplace_back(std::move(symbol), std::move(val));
+            hash.emplace_back(symbol, val);
         } else {
             auto key = parseStatement();
             if (key == nullptr) {
@@ -755,11 +732,11 @@ std::unique_ptr<AST::Statement> Parser::parseHash() {
         }
     }
     nextLexerToken();
-    return std::make_unique<AST::Hash>(std::move(hash));
+    return new AST::Hash(std::move(hash));
 }
 
-std::unique_ptr<AST::Statement> Parser::parseIfBranches(
-        std::unique_ptr<AST::Statement> cond, std::unique_ptr<AST::Statement> trueBranch) {
+AST::Statement *Parser::parseIfBranches(
+        AST::Statement *cond, AST::Statement *trueBranch) {
     if (currentLexerToken == Lexer::TOK_ELSE) {
         nextLexerToken();
         auto body = parseCompStatement();
@@ -771,7 +748,7 @@ std::unique_ptr<AST::Statement> Parser::parseIfBranches(
             return nullptr;
         }
         nextLexerToken();
-        return std::make_unique<AST::If>(std::move(cond), std::move(trueBranch), std::move(body));
+        return new AST::If(cond, trueBranch, body);
     }
     if (currentLexerToken != Lexer::TOK_ELSIF) {
         logError("expected \"else\" or \"elsif\"");
@@ -787,16 +764,16 @@ std::unique_ptr<AST::Statement> Parser::parseIfBranches(
     auto body = parseCompStatement();
     if (currentLexerToken == Lexer::TOK_END) {
         nextLexerToken();
-        return std::make_unique<AST::If>(std::move(cond), std::move(body), nullptr);
+        return new AST::If(cond, body, nullptr);
     }
-    auto falseBranch = parseIfBranches(std::move(cond1), std::move(body));
+    auto falseBranch = parseIfBranches(cond1, body);
     if (falseBranch == nullptr) {
         return nullptr;
     }
-    return std::make_unique<AST::If>(std::move(cond), std::move(trueBranch), std::move(falseBranch));
+    return new AST::If(cond, trueBranch, falseBranch);
 }
 
-std::unique_ptr<AST::CallArgs> Parser::parseCallArgs() {
+AST::CallArgs *Parser::parseCallArgs() {
     bool expectTrailingParen = false;
     bool expectTrailingBracket = false;
     if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
@@ -810,12 +787,12 @@ std::unique_ptr<AST::CallArgs> Parser::parseCallArgs() {
         }
     }
     skipSpaces();
-    std::vector<std::unique_ptr<AST::Statement>> args;
+    std::vector<AST::Statement *> args;
     if (!expectTrailingParen && !expectTrailingBracket) {
         //todo handle hash argument case case
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
             auto block = parseBlock();
-            return std::make_unique<AST::CallArgs>(std::move(args), std::move(block), false, false);
+            return new AST::CallArgs(std::move(args), block, false, false);
         }
     }
     while (true) {
@@ -835,7 +812,7 @@ std::unique_ptr<AST::CallArgs> Parser::parseCallArgs() {
             }
             break;
         }
-        args.push_back(std::move(stmt));
+        args.push_back(stmt);
         if (currentLexerToken == Lexer::TOK_COMMA) {
             nextLexerToken();
         } else if (expectTrailingBracket && currentLexerToken == Lexer::TOK_BRACKET_RIGHT ||
@@ -858,17 +835,13 @@ std::unique_ptr<AST::CallArgs> Parser::parseCallArgs() {
         skipSpaces();
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
             auto block = parseBlock();
-            return std::make_unique<AST::CallArgs>(
-                    std::move(args),
-                    std::move(block),
-                    expectTrailingParen,
-                    expectTrailingBracket);
+            return new AST::CallArgs(std::move(args), block, expectTrailingParen, expectTrailingBracket);
         }
     }
-    return std::make_unique<AST::CallArgs>(std::move(args), nullptr, expectTrailingParen, expectTrailingBracket);
+    return new AST::CallArgs(std::move(args), nullptr, expectTrailingParen, expectTrailingBracket);
 }
 
-std::unique_ptr<AST::FunctionDef> Parser::parseBlock() {
+AST::FunctionDef *Parser::parseBlock() {
     bool expectEndToken = currentLexerToken == Lexer::TOK_DO;
     if (currentLexerToken != Lexer::TOK_BRACE_LEFT && currentLexerToken != Lexer::TOK_DO) {
         logError("expected \"{\" or \"do\"");
@@ -876,11 +849,10 @@ std::unique_ptr<AST::FunctionDef> Parser::parseBlock() {
     }
     nextLexerToken();
     skipTerms();
-    std::unique_ptr<AST::FuncDefArgs> args(nullptr);
+    std::vector<AST::FuncDefArg *> args;
     if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_BIN_OR) {
         nextLexerToken();
-        args = parseFuncDefArgs(true);
-        if (args == nullptr) {
+        if (!parseFuncDefArgs(args, true)) {
             return nullptr;
         }
         if (currentLexerToken != Lexer::TOK_OP || queue->getOperation() != AST::BIN_OP_BIN_OR) {
@@ -905,7 +877,7 @@ std::unique_ptr<AST::FunctionDef> Parser::parseBlock() {
         }
     }
     nextLexerToken();
-    return std::make_unique<AST::FunctionDef>(std::string(), std::move(args), nullptr, std::move(body));
+    return new AST::FunctionDef(std::string(), args, nullptr, body);
 }
 
 bool Parser::parseVariable(std::string &ident, bool greedy) {
@@ -969,43 +941,102 @@ bool Parser::parseVariable(std::string &ident, bool greedy) {
     return true;
 }
 
-std::unique_ptr<AST::FuncDefArgs> Parser::parseFuncDefArgs(bool greedy) {
-    std::map<std::string, std::unique_ptr<AST::Statement>> args;
+bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy) {
+    bool blockPresent = false;
+    bool variadicPresent = false;
+    bool enteredParametrizedFunctions = false;
+    bool exitedParametrizedFunctions = false;
+    int pos = 0;
     while (true) {
         if (greedy) {
             skipTerms();
         } else {
             skipSpaces();
         }
-        //todo handle *args and &block cases
-        if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-            break;
-        }
-        std::string label = queue->getStr();
-        nextLexerToken();
-        if (currentLexerToken == Lexer::TOK_COLON) {
-            nextLexerToken(true);
-            auto val = parseStatement();
-            if (val == nullptr) {
-                logError("expected statement");
-                return nullptr;
+        if (currentLexerToken == Lexer::TOK_OP) {
+            if (queue->getOperation() == AST::LEX_OP_STAR) {
+                if (variadicPresent) {
+                    logError("unexpected second variadic");
+                    return false;
+                }
+                variadicPresent = true;
+                if (enteredParametrizedFunctions) {
+                    exitedParametrizedFunctions = true;
+                }
+                nextLexerToken();
+                skipTerms();
+                if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
+                    logError("expected identifier");
+                    return false;
+                }
+                args.push_back(new AST::FuncDefArg(
+                        queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
+            } else if (queue->getOperation() == AST::BIN_OP_BIN_AND) {
+                if (blockPresent) {
+                    logError("unexpected second block");
+                    return false;
+                }
+                blockPresent = true;
+                if (enteredParametrizedFunctions) {
+                    exitedParametrizedFunctions = true;
+                }
+                nextLexerToken();
+                skipTerms();
+                if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
+                    logError("expected identifier");
+                    return false;
+                }
+                args.push_back(new AST::FuncDefArg(
+                        queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
+                nextLexerToken(true);
+            } else {
+                logError("unexpected token");
+                return false;
             }
-            args.emplace(std::move(label), std::move(val));
         } else {
-            skipSpaces();
-            if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_ASSIGN) {
+            if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
+                break;
+            }
+            std::string label = queue->getStr();
+            nextLexerToken();
+            if (currentLexerToken == Lexer::TOK_COLON) {
                 nextLexerToken(true);
                 skipTerms();
                 auto val = parseStatement();
                 if (val == nullptr) {
                     logError("expected statement");
-                    return nullptr;
+                    return false;
                 }
-                args.emplace(std::move(label), std::move(val));
+                args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_MAP));
             } else {
-                args.emplace(std::move(label), nullptr);
+                skipSpaces();
+                if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_ASSIGN) {
+                    if (exitedParametrizedFunctions) {
+                        logError("parameters with default values must be declared next to each other");
+                        return false;
+                    }
+                    if (variadicPresent) {
+                        logError("parameters with default values must come before variadic");
+                        return false;
+                    }
+                    enteredParametrizedFunctions = true;
+                    nextLexerToken(true);
+                    skipTerms();
+                    auto val = parseStatement();
+                    if (val == nullptr) {
+                        logError("expected statement");
+                        return false;
+                    }
+                    args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_NORMAL));
+                } else {
+                    if (enteredParametrizedFunctions) {
+                        exitedParametrizedFunctions = true;
+                    }
+                    args.push_back(new AST::FuncDefArg(label, pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_NORMAL));
+                }
             }
         }
+        pos++;
         if (greedy) {
             skipTerms();
         } else {
@@ -1016,7 +1047,7 @@ std::unique_ptr<AST::FuncDefArgs> Parser::parseFuncDefArgs(bool greedy) {
         }
         nextLexerToken();
     }
-    return std::make_unique<AST::FuncDefArgs>(std::move(args));
+    return true;
 }
 
 Lexer::TokenType Parser::nextLexerToken(bool skipSpacesF) {
@@ -1027,7 +1058,7 @@ Lexer::TokenType Parser::nextLexerToken(bool skipSpacesF) {
     return currentLexerToken;
 }
 
-std::unique_ptr<AST::Statement> Parser::parseBinOpRight(std::unique_ptr<AST::Statement> left, int precedence) {
+AST::Statement *Parser::parseBinOpRight(AST::Statement *left, int precedence) {
     while (true) {
         skipSpaces();
         if (currentLexerToken != Lexer::TOK_OP) {
@@ -1057,7 +1088,7 @@ std::unique_ptr<AST::Statement> Parser::parseBinOpRight(std::unique_ptr<AST::Sta
             if (falseBranch == nullptr) {
                 return nullptr;
             }
-            left = std::make_unique<AST::If>(std::move(left), std::move(trueBranch), std::move(falseBranch));
+            left = new AST::If(left, trueBranch, falseBranch);
             continue;
         }
         nextLexerToken(true);
@@ -1071,9 +1102,9 @@ std::unique_ptr<AST::Statement> Parser::parseBinOpRight(std::unique_ptr<AST::Sta
             nextOpPred = getOpPrecedence(convertToBinOp(queue->getOperation()));
         }
         if (opPred < nextOpPred) {
-            right = parseBinOpRight(std::move(right), precedence + 1);
+            right = parseBinOpRight(right, precedence + 1);
         }
-        left = std::make_unique<AST::BinaryOperation>(operation, std::move(left), std::move(right));
+        left = new AST::BinaryOperation(operation, left, right);
     }
 }
 
@@ -1110,6 +1141,7 @@ const std::map<AST::OperationType, int> precedences = {
 
         //todo add ===, !=, =~, !~
         {AST::BIN_OP_EQUAL,              9},
+        {AST::BIN_OP_CASE_EQUAL,         9},
         {AST::BIN_OP_THREE_WAY_COMPARE,  9},
 
         {AST::BIN_OP_AND,                7},

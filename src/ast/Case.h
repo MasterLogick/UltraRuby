@@ -4,29 +4,27 @@
 #include <memory>
 #include <vector>
 #include "Statement.h"
+#include "CaseWhereBlock.h"
 
 namespace UltraRuby {
 namespace AST {
 
 class Case : public Statement {
 public:
-    Case(
-            std::unique_ptr<Statement> arg,
-            std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> cases
-    ) :
-            Statement(STMT_CASE), arg(std::move(arg)), cases(std::move(cases)) {}
+    Case(Statement *arg, std::vector<CaseWhereBlock *> cases)
+            : Statement(STMT_CASE), arg(arg), cases(std::move(cases)) {}
 
-    inline const std::unique_ptr<Statement> &getArg() const {
+    inline Statement *getArg() const {
         return arg;
     }
 
-    inline const std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> &getCases() const {
+    inline const std::vector<CaseWhereBlock *> &getCases() const {
         return cases;
     }
 
 private:
-    std::unique_ptr<Statement> arg;
-    std::vector<std::pair<std::unique_ptr<AST::Statement>, std::unique_ptr<AST::Statement>>> cases;
+    Statement *arg;
+    std::vector<CaseWhereBlock *> cases;
 };
 
 } // UltraRuby

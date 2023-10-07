@@ -9,27 +9,25 @@ namespace AST {
 
 class If : public Statement {
 public:
-    If(std::unique_ptr<Statement> condition, std::unique_ptr<Statement> trueBranch,
-       std::unique_ptr<Statement> falseBranch)
-            : Statement(STMT_IF), condition(std::move(condition)), trueBranch(std::move(trueBranch)),
-              falseBranch(std::move(falseBranch)) {}
+    If(Statement *condition, Statement *trueBranch, Statement *falseBranch)
+            : Statement(STMT_IF), condition(condition), trueBranch(trueBranch), falseBranch(falseBranch) {}
 
-    inline const std::unique_ptr<Statement> &getCondition() const {
+    inline Statement *getCondition() const {
         return condition;
     }
 
-    inline const std::unique_ptr<Statement> &getTrueBranch() const {
+    inline Statement *getTrueBranch() const {
         return trueBranch;
     }
 
-    inline const std::unique_ptr<Statement> &getFalseBranch() const {
+    inline Statement *getFalseBranch() const {
         return falseBranch;
     }
 
 private:
-    std::unique_ptr<Statement> condition;
-    std::unique_ptr<Statement> trueBranch;
-    std::unique_ptr<Statement> falseBranch;
+    Statement *condition;
+    Statement *trueBranch;
+    Statement *falseBranch;
 };
 
 } // UltraRuby

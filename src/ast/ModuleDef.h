@@ -11,22 +11,20 @@ namespace AST {
 
 class ModuleDef : public Statement {
 public:
-    ModuleDef(std::string moduleIdentifier, std::unique_ptr<AST::Statement> definition)
-            : Statement(STMT_MODULE_DEF),
-              moduleIdentifier(std::move(moduleIdentifier)),
-              definition(std::move(definition)) {}
+    ModuleDef(std::string moduleIdentifier, AST::Block *definition)
+            : Statement(STMT_MODULE_DEF), moduleIdentifier(std::move(moduleIdentifier)), definition(definition) {}
 
     inline const std::string &getModuleIdentifier() const {
         return moduleIdentifier;
     }
 
-    inline const std::unique_ptr<AST::Statement> &getDefinition() const {
+    inline AST::Block *getDefinition() const {
         return definition;
     }
 
 private:
     std::string moduleIdentifier;
-    std::unique_ptr<AST::Statement> definition;
+    AST::Block *definition;
 };
 
 } // UltraRuby

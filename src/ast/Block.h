@@ -10,15 +10,14 @@ namespace AST {
 
 class Block : public Statement {
 public:
-    explicit Block(std::vector<std::unique_ptr<AST::Statement>> list)
-            : Statement(STMT_BLOCK), list(std::move(list)) {}
+    explicit Block(std::vector<AST::Statement *> list) : Statement(STMT_BLOCK), list(std::move(list)) {}
 
-    inline const std::vector<std::unique_ptr<AST::Statement>> &getList() const {
+    inline const std::vector<AST::Statement *> &getList() const {
         return list;
     }
 
 private:
-    std::vector<std::unique_ptr<AST::Statement>> list;
+    std::vector<AST::Statement *> list;
 };
 
 } // UltraRuby

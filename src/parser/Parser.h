@@ -4,14 +4,14 @@
 #include <map>
 #include "../lexer/Lexer.h"
 #include "../ast/ASTClassDecls.h"
+#include "../ast/FuncDefArg.h"
 
 namespace UltraRuby {
 namespace Parser {
 
 class Parser {
 public:
-    explicit Parser(Lexer::TokenQueue *queue)
-            : queue(queue) {
+    explicit Parser(Lexer::TokenQueue *queue) : queue(queue) {
         currentLexerToken = queue->getNextToken();
     }
 
@@ -20,7 +20,7 @@ public:
      *         ::= top_stmt program
      * @return
      */
-    std::unique_ptr<AST::Block> parseProgram();
+    AST::Block *parseProgram();
 
 private:
     /**
@@ -28,7 +28,7 @@ private:
      *          ::= BEGIN { program }
      * @return
      */
-    std::unique_ptr<AST::Statement> parseTopStatement();
+    AST::Statement *parseTopStatement();
 
     /**
      * stmt ::= uncontrolled_stmt
@@ -40,21 +40,21 @@ private:
      *                  ::= k_until
      * @return
      */
-    std::unique_ptr<AST::Statement> parseStatement(int opPrecedence = 0);
+    AST::Statement *parseStatement(int opPrecedence = 0);
 
     /**
      * uncontrolled_stmt ::= primary
      *                   ::= primary bin_op uncontrolled_stmt
      * @return
      */
-    std::unique_ptr<AST::Statement> parseUncontrolledStatement(int opPrecedence = 0);
+    AST::Statement *parseUncontrolledStatement(int opPrecedence = 0);
 
     /**
      * primary ::= primary_object
      *         ::= primary . identifier call_args
      * @return
      */
-    std::unique_ptr<AST::Statement> parsePrimary();
+    AST::Statement *parsePrimary();
 
     /**
      * primary_object ::= string
@@ -90,7 +90,7 @@ private:
      *         ::= variable
      * @return
      */
-    std::unique_ptr<AST::Statement> parsePrimaryObject();
+    AST::Statement *parsePrimaryObject();
 
 
     bool primaryTest();
@@ -104,7 +104,7 @@ private:
      *       ::= \\n
      * @return
      */
-    std::unique_ptr<AST::Block> parseCompStatement();
+    AST::Block *parseCompStatement();
 
     /**
      * array ::= ]
@@ -113,7 +113,7 @@ private:
      *            ::= stmt, array_body
      * @return
      */
-    std::unique_ptr<AST::Statement> parseArray();
+    AST::Statement *parseArray();
 
     /**
      * map ::= }
@@ -124,15 +124,14 @@ private:
      *    ::= stmt => stmt
      * @return
      */
-    std::unique_ptr<AST::Statement> parseHash();
+    AST::Statement *parseHash();
 
     /**
      * if_branches ::= elsif stmt then_opt comp_statement if_branches
      *             ::= else comp_statement end
      * @return
      */
-    std::unique_ptr<AST::Statement> parseIfBranches(
-            std::unique_ptr<AST::Statement> cond, std::unique_ptr<AST::Statement> trueBranch);
+    AST::Statement *parseIfBranches(AST::Statement *cond, AST::Statement *trueBranch);
 
     /**
      * call_args ::= call_args_inside
@@ -144,7 +143,7 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    std::unique_ptr<AST::CallArgs> parseCallArgs();
+    AST::CallArgs *parseCallArgs();
 
     /**
      * block ::= { block_body }
@@ -153,7 +152,7 @@ private:
      *            ::= | func_def_args | comp_statement
      * @return
      */
-    std::unique_ptr<AST::FunctionDef> parseBlock();
+    AST::FunctionDef *parseBlock();
 
     /**
      * variable ::= dc_variable
@@ -175,7 +174,7 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    std::unique_ptr<AST::FuncDefArgs> parseFuncDefArgs(bool greedy);
+    bool parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy);
 
     Lexer::TokenType nextLexerToken(bool skipSpaces = false);
 
@@ -185,7 +184,7 @@ private:
 
     void logError(const char *err);
 
-    std::unique_ptr<AST::Statement> parseBinOpRight(std::unique_ptr<AST::Statement> left, int precedence = 0);
+    AST::Statement *parseBinOpRight(AST::Statement *left, int precedence = 0);
 
     AST::OperationType convertToBinOp(AST::OperationType type);
 

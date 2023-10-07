@@ -13,25 +13,25 @@ namespace AST {
 
 class Call : public Statement {
 public:
-    Call(std::string name, std::unique_ptr<CallArgs> args, std::unique_ptr<Statement> callee)
-            : Statement(STMT_CALL), name(std::move(name)), callee(std::move(callee)), args(std::move(args)) {}
+    Call(std::string name, CallArgs *args, Statement *object)
+            : Statement(STMT_CALL), name(std::move(name)), object(object), args(args) {}
 
     inline const std::string &getName() const {
         return name;
     }
 
-    inline const std::unique_ptr<Statement> &getCallee() const {
-        return callee;
+    inline Statement *getObject() const {
+        return object;
     }
 
-    inline const std::unique_ptr<CallArgs> &getArgs() const {
+    inline CallArgs *getArgs() const {
         return args;
     }
 
 private:
     std::string name;
-    std::unique_ptr<Statement> callee;
-    std::unique_ptr<CallArgs> args;
+    Statement *object;
+    CallArgs *args;
 };
 
 } // UltraRuby

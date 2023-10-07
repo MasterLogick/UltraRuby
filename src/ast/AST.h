@@ -2,7 +2,6 @@
 #define ULTRA_RUBY_AST_AST_H
 
 #include "Array.h"
-#include "Assignment.h"
 #include "BinaryOperation.h"
 #include "Block.h"
 #include "BoolConst.h"
@@ -15,7 +14,6 @@
 #include "ExceptionalBlock.h"
 #include "FloatConst.h"
 #include "For.h"
-#include "FuncDefArgs.h"
 #include "FunctionDef.h"
 #include "Hash.h"
 #include "If.h"

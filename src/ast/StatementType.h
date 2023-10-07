@@ -9,7 +9,6 @@ enum StatementType {
 
     STMT_BIN_OP,
     STMT_UN_OP,
-    STMT_ASSIGNMENT,
 
     STMT_CALL,
 

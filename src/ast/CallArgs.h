@@ -11,18 +11,14 @@ namespace AST {
 
 class CallArgs {
 public:
-    CallArgs(
-            std::vector<std::unique_ptr<Statement>> args,
-            std::unique_ptr<FunctionDef> block,
-            bool parens,
-            bool brackets)
-            : args(std::move(args)), block(std::move(block)), parens(parens), brackets(brackets) {}
+    CallArgs(std::vector<Statement *> args, FunctionDef *block, bool parens, bool brackets)
+            : args(std::move(args)), block(block), parens(parens), brackets(brackets) {}
 
-    inline const std::vector<std::unique_ptr<Statement>> &getArgs() const {
+    inline const std::vector<Statement *> &getArgs() const {
         return args;
     }
 
-    inline const std::unique_ptr<FunctionDef> &getBlock() const {
+    inline FunctionDef *getBlock() const {
         return block;
     }
 
@@ -35,8 +31,8 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<Statement>> args;
-    std::unique_ptr<FunctionDef> block;
+    std::vector<Statement *> args;
+    FunctionDef *block;
     bool parens;
     bool brackets;
 };

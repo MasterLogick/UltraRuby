@@ -9,20 +9,19 @@ namespace AST {
 
 class While : public Statement {
 public:
-    While(std::unique_ptr<Statement> condition, std::unique_ptr<Statement> body)
-            : Statement(STMT_WHILE), condition(std::move(condition)), body(std::move(body)) {}
+    While(Statement *condition, Statement *body) : Statement(STMT_WHILE), condition(condition), body(body) {}
 
-    inline const std::unique_ptr<Statement> &getCondition() const {
+    inline Statement *getCondition() const {
         return condition;
     }
 
-    inline const std::unique_ptr<Statement> &getBody() const {
+    inline Statement *getBody() const {
         return body;
     }
 
 private:
-    std::unique_ptr<Statement> condition;
-    std::unique_ptr<Statement> body;
+    Statement *condition;
+    Statement *body;
 };
 
 } // UltraRuby

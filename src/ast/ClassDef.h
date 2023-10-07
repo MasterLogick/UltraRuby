@@ -12,15 +12,11 @@ namespace AST {
 
 class ClassDef : public Statement {
 public:
-    ClassDef(
-            std::string classIdentifier,
-            std::string superclassIdentifier,
-            std::unique_ptr<AST::Statement> definition
-    ) :
+    ClassDef(std::string classIdentifier, std::string superclassIdentifier, AST::Block *definition) :
             Statement(STMT_CLASS_DEF),
             classIdentifier(std::move(classIdentifier)),
             superclassIdentifier(std::move(superclassIdentifier)),
-            definition(std::move(definition)) {}
+            definition(definition) {}
 
     inline const std::string &getClassIdentifier() const {
         return classIdentifier;
@@ -30,14 +26,14 @@ public:
         return superclassIdentifier;
     }
 
-    inline const std::unique_ptr<AST::Statement> &getDefinition() const {
+    inline AST::Block *getDefinition() const {
         return definition;
     }
 
 private:
     std::string classIdentifier;
     std::string superclassIdentifier;
-    std::unique_ptr<AST::Statement> definition;
+    AST::Block *definition;
 };
 
 } // UltraRuby

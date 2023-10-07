@@ -10,20 +10,20 @@ namespace AST {
 
 class UnaryOperation : public Statement {
 public:
-    explicit UnaryOperation(OperationType op, std::unique_ptr<AST::Statement> expr)
-            : Statement(STMT_UN_OP), op(op), expr(std::move(expr)) {}
+    explicit UnaryOperation(OperationType op, AST::Statement *expr)
+            : Statement(STMT_UN_OP), op(op), expr(expr) {}
 
     inline OperationType getOp() const {
         return op;
     }
 
-    inline const std::unique_ptr<AST::Statement> &getExpr() const {
+    inline AST::Statement *getExpr() const {
         return expr;
     }
 
 private:
     OperationType op;
-    std::unique_ptr<AST::Statement> expr;
+    AST::Statement *expr;
 };
 
 } // UltraRuby

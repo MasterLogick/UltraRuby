@@ -9,20 +9,20 @@ namespace AST {
 
 class ClassInstanceDef : public Statement {
 public:
-    ClassInstanceDef(std::unique_ptr<AST::Statement> instance, std::unique_ptr<AST::Statement> definition)
-            : Statement(STMT_CLASS_INSTANCE_DEF), instance(std::move(instance)), definition(std::move(definition)) {}
+    ClassInstanceDef(AST::Statement *instance, AST::Block *definition)
+            : Statement(STMT_CLASS_INSTANCE_DEF), instance(instance), definition(definition) {}
 
-    inline const std::unique_ptr<AST::Statement> &getInstance() const {
+    inline AST::Statement *getInstance() const {
         return instance;
     }
 
-    inline const std::unique_ptr<AST::Statement> &getDefinition() const {
+    inline AST::Block *getDefinition() const {
         return definition;
     }
 
 private:
-    std::unique_ptr<AST::Statement> instance;
-    std::unique_ptr<AST::Statement> definition;
+    AST::Statement *instance;
+    AST::Block *definition;
 };
 
 } // UltraRuby

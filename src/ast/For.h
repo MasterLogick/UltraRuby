@@ -9,25 +9,24 @@ namespace AST {
 
 class For : public Statement {
 public:
-    For(std::unique_ptr<Statement> var, std::unique_ptr<Statement> expr, std::unique_ptr<Statement> body)
-            : Statement(STMT_FOR), var(std::move(var)), expr(std::move(expr)), body(std::move(body)) {}
+    For(Statement *var, Statement *expr, Statement *body) : Statement(STMT_FOR), var(var), expr(expr), body(body) {}
 
-    inline const std::unique_ptr<Statement> &getVar() const {
+    inline Statement *getVar() const {
         return var;
     }
 
-    inline const std::unique_ptr<Statement> &getExpr() const {
+    inline Statement *getExpr() const {
         return expr;
     }
 
-    inline const std::unique_ptr<Statement> &getBody() const {
+    inline Statement *getBody() const {
         return body;
     }
 
 private:
-    std::unique_ptr<Statement> var;
-    std::unique_ptr<Statement> expr;
-    std::unique_ptr<Statement> body;
+    Statement *var;
+    Statement *expr;
+    Statement *body;
 };
 
 } // UltraRuby

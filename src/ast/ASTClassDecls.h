@@ -4,8 +4,6 @@ namespace UltraRuby {
 namespace AST {
 class Array;
 
-class Assignment;
-
 class BinaryOperation;
 
 class Block;

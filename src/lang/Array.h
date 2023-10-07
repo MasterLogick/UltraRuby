@@ -8,7 +8,7 @@ namespace Lang {
 
 class Array : public Object {
 public:
-    static Array *alloc(int size, ...);
+    static Array *allocOnHeap(int size, ...);
 
 private:
     std::vector<Object *> arrImpl;

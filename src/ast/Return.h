@@ -9,14 +9,14 @@ namespace AST {
 
 class Return : public Statement {
 public:
-    Return(std::unique_ptr<Statement> retVal) : Statement(STMT_RETURN), retVal(std::move(retVal)) {}
+    Return(CallArgs *callArgs) : Statement(STMT_RETURN), callArgs(callArgs) {}
 
-    inline const std::unique_ptr<Statement> &getRetVal() const {
-        return retVal;
+    inline CallArgs *getCallArgs() const {
+        return callArgs;
     }
 
 private:
-    std::unique_ptr<Statement> retVal;
+    CallArgs *callArgs;
 };
 
 } // UltraRuby

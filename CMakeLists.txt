@@ -50,7 +50,6 @@ add_executable(ultra_ruby src/main.cpp
         src/ast/For.h
         src/ast/ClassInstanceDef.h
         src/ast/Array.h
-        src/ast/FuncDefArgs.h
         src/ast/IntegerConst.h
         src/ast/Hash.h
         src/lexer/TokenQueue.h
@@ -82,9 +81,15 @@ add_executable(ultra_ruby src/main.cpp
         src/lang/Array.h
         src/lang/ObjectVector.cpp
         src/lang/ObjectVector.h
-        src/ast/FuncDefArgs.cpp
         src/lang/Hash.cpp
         src/lang/Hash.h
+        src/lang/Module.cpp
+        src/lang/Module.h
+        src/ast/FuncDefArg.h
+        src/ast/FunctionDef.cpp
+        src/lang/PrimaryConstants.cpp
+        src/lang/PrimaryConstants.h
+        src/ast/CaseWhereBlock.h
 )
 message(${LLVM_AVAILABLE_LIBS})
 llvm_map_components_to_libnames(llvm_libs core orcjit native)

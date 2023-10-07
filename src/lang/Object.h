@@ -2,6 +2,7 @@
 #define ULTRA_RUBY_LANG_OBJECT_H
 
 #include <vector>
+#include "HashInternal.h"
 
 namespace UltraRuby {
 namespace Lang {
@@ -13,6 +14,8 @@ class Symbol;
 
 class Object {
 public:
+    Object(Class *objectClass) : objectClass(objectClass) {}
+
     Object *call0(Symbol *name);
 
     Object *call1(Symbol *name, Object *arg1);
@@ -25,10 +28,28 @@ public:
 
     Symbol *defineSingletonMethod(Symbol *nameSymbol, int minArgs, int maxArgs, void *method);
 
+    Object *defineClassInstance(Object *(*)(Object *));
+
+    Class *getObjectClass() const {
+        return objectClass;
+    }
+
+    void setObjectClass(Class *oClass) {
+        Object::objectClass = oClass;
+    }
+
+    const HashInternal &getSingletonMethods() const {
+        return singletonMethods;
+    }
+
+    const HashInternal &getAdditionalInstanceVariables() const {
+        return additionalInstanceVariables;
+    }
+
 private:
-    Class *oClass;
-    HashInternal *singletonMethods;
-    HashInternal *additionalInstanceVariables;
+    Class *objectClass;
+    HashInternal singletonMethods;
+    HashInternal additionalInstanceVariables;
 };
 
 } // UltraRuby

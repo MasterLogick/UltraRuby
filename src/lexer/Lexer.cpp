@@ -50,6 +50,7 @@ const std::map<std::string, AST::OperationType> ops = {
         {"<",   AST::BIN_OP_LESS},
         {"<=",  AST::BIN_OP_LESS_EQUAL},
         {"==",  AST::BIN_OP_EQUAL},
+        {"===", AST::BIN_OP_CASE_EQUAL},
         {">=",  AST::BIN_OP_GREATER_EQUAL},
         {">",   AST::BIN_OP_GREATER},
         {"<=>", AST::BIN_OP_THREE_WAY_COMPARE},
