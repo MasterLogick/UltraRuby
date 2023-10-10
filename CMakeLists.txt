@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
 project(ultra_ruby)
 
-find_package(LLVM REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
@@ -31,7 +31,6 @@ add_executable(ultra_ruby src/main.cpp
         src/lexer/TokenType.cpp
         src/ast/ClassDef.h
         src/ast/UnaryOperation.h
-        src/ast/Assignment.h
         src/ast/ModuleDef.h
         src/ast/Block.h
         src/ast/If.h

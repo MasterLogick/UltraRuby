@@ -94,7 +94,12 @@ TokenType getKeyword(const std::string &identifier) {
 }
 
 bool isOp(int c) {
-    return std::find(std::begin(opChars), std::end(opChars), c) != std::end(opChars);
+    for (const auto &item: opChars) {
+        if (item == c) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void Lexer::emmitToken() {
@@ -249,7 +254,8 @@ void Lexer::emmitToken() {
     if (isalpha(lastChar) || lastChar == '_' || lastChar == '$' || lastChar == ':') {
         std::string identifier;
         identifier += (char) lastChar;
-        for (lastChar = input->getNextChar(); isalnum(lastChar) || lastChar == '_'; lastChar = input->getNextChar()) {
+        for (lastChar = input->getNextChar();
+             isalnum(lastChar) || lastChar == '_'; lastChar = input->getNextChar()) {
             identifier += (char) lastChar;
         }
         if (getKeyword(identifier) != TOK_ERROR) {

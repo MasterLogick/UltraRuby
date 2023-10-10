@@ -6,8 +6,8 @@ std::string Scope::deriveFunctionName(AST::FunctionDef *functionDef) {
     return functionDef->getName();
 }
 
-Scope *Scope::enterFunctionBody(AST::FunctionDef *functionDef) {
-    return this;
+void Scope::enterFunctionBody(AST::FunctionDef *functionDef) {
+    outer = new Scope(this);
 }
 
 std::string Scope::deriveClassDeclFunction(UltraRuby::AST::ClassDef *pDef) {
@@ -38,12 +38,26 @@ llvm::Value *Scope::getVariable(const std::string &name) {
     return vars[name];
 }
 
-void Scope::addVariable(const std::string &name, llvm::Value *alloca) {
+void Scope::addVariable(std::string name, llvm::Value *alloca) {
     vars[name] = alloca;
 }
 
 void Scope::markBlockAsTerminated() {
 
+}
+
+void Scope::leaveFunctionBody() {
+    vars = std::move(outer->vars);
+    outer = outer->outer;
+}
+
+Scope::Scope(Scope *outer) {
+    vars = std::move(outer->vars);
+    this->outer = outer;
+}
+
+Scope::Scope() {
+    outer = this;
 }
 } // UltraRuby
 } // IR

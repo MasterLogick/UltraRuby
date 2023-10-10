@@ -18,11 +18,13 @@ namespace IR {
 
 class Scope {
 public:
-    Scope() : parent(nullptr) {}
+    Scope();
 
     std::string deriveFunctionName(AST::FunctionDef *functionDef);
 
-    Scope *enterFunctionBody(AST::FunctionDef *functionDef);
+    void enterFunctionBody(AST::FunctionDef *functionDef);
+
+    void leaveFunctionBody();
 
     llvm::Value *getVariable(const std::string &name);
 
@@ -38,12 +40,14 @@ public:
 
     Lang::Class **getOrAllocClass(AST::ClassDef *pDef);
 
-    void addVariable(const std::string &name, llvm::Value *alloca);
+    void addVariable(std::string name, llvm::Value *alloca);
 
     void markBlockAsTerminated();
 
 private:
-    Scope *parent;
+    Scope(Scope *outer);
+
+    Scope *outer;
     std::map<std::string, llvm::Value *> vars;
 };
 

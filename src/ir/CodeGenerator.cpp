@@ -96,7 +96,7 @@ llvm::Function *CodeGenerator::codegenFunctionBody(AST::FunctionDef *functionDef
     std::vector<llvm::Type *> argTypes(functionDef->getMaxArgsCount() + 1, voidpTy);
     auto *ft = llvm::FunctionType::get(voidpTy, argTypes, false);
     func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, name, *module);
-    scope = scope->enterFunctionBody(functionDef);
+    scope->enterFunctionBody(functionDef);
     auto *bb = llvm::BasicBlock::Create(*context, "entry", func);
     builder->SetInsertPoint(bb);
     if (!codegenArgsProcessingPreamble(functionDef, func)) {
@@ -110,6 +110,7 @@ llvm::Function *CodeGenerator::codegenFunctionBody(AST::FunctionDef *functionDef
     }
     builder->CreateRet(retVal);
     llvm::verifyFunction(*func);
+    scope->leaveFunctionBody();
     return func;
 }
 
@@ -130,7 +131,7 @@ llvm::Value *CodeGenerator::codegenIntegerConst(AST::IntegerConst *intConst) {
 }
 
 llvm::Value *CodeGenerator::codegenFloatConst(AST::FloatConst *floatConst) {
-    //todo check ruby impl float size
+    //todo check machine float size
     if (voidpIsUint64) {
         float v = std::stof(floatConst->getVal());
         return builder->CreateIntToPtr(llvm::ConstantFP::get(llvm::Type::getFloatTy(*context), v), voidpTy);
@@ -215,7 +216,7 @@ llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) 
             break;
         case AST::BIN_OP_AND:
         case AST::BIN_OP_AND_ASSIGN:
-            opLabel = "&";
+            opLabel = "&&";
             break;
         case AST::BIN_OP_XOR:
         case AST::BIN_OP_XOR_ASSIGN:
@@ -322,11 +323,122 @@ void CodeGenerator::debugPrintModuleIR() {
 }
 
 bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func) {
-    auto argsBegin = func->args().begin();
-    auto argsEnd = func->args().end();
+    auto argsBegin = func->arg_begin();
+    auto argsEnd = func->arg_end();
 
     auto selfArg = argsBegin;
-    scope->addVariable("self", selfArg);
+    auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_varAllocaPtr");
+    builder->CreateStore(selfArg, selfAlloca);
+    scope->addVariable("self", selfAlloca);
+    selfArg->setName("self");
+
+    argsBegin++;
+    if (functionDef->hasBlockArg()) {
+        argsEnd--;
+        auto *blockArg = argsEnd;
+        blockArg->setName("blockArg");
+        auto *blockAlloca = builder->CreateAlloca(voidpTy, nullptr,
+                                                  functionDef->getBlockArg()->getName() + "_varAllocaPtr");
+        builder->CreateStore(blockArg, blockAlloca);
+        scope->addVariable(functionDef->getBlockArg()->getName(), blockAlloca);
+    }
+
+    llvm::Argument *mapArg = nullptr;
+    if (functionDef->hasMapTypeArgs()) {
+        argsEnd--;
+        mapArg = argsEnd;
+        mapArg->setName("mapArg");
+    }
+    AST::Symbol hasKeySym("has_key?");
+    AST::Symbol getSym("[]");
+
+    for (const auto &arg: functionDef->getArgs()) {
+        switch (arg->getType()) {
+            case AST::FuncDefArg::AST_ARG_TYPE_NORMAL: {
+                auto *funcArgValue = argsBegin;
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");
+                funcArgValue->setName(arg->getName() + "_arg");
+                if (arg->getDefaultValue() == nullptr) {
+                    builder->CreateStore(funcArgValue, argAlloca);
+                } else {
+                    auto *cond = builder->CreateICmpNE(funcArgValue, codegenPointer(nullptr),
+                                                       "arg_" + arg->getName() + "_isPassed");
+                    auto *curBlock = builder->GetInsertBlock();
+                    auto *falseBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_useDefault",
+                                                                 func);
+                    auto *merge = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_merge", func);
+                    builder->CreateCondBr(cond, merge, falseBranch);
+
+                    builder->SetInsertPoint(falseBranch);
+                    auto *defaultVal = codegenStatement(arg->getDefaultValue());
+                    falseBranch = builder->GetInsertBlock();
+                    builder->CreateBr(merge);
+
+                    builder->SetInsertPoint(merge);
+                    auto *argValPhi = builder->CreatePHI(voidpTy, 2, "arg_" + arg->getName() + "_phi");
+                    argValPhi->addIncoming(funcArgValue, curBlock);
+                    argValPhi->addIncoming(defaultVal, falseBranch);
+                    builder->CreateStore(argValPhi, argAlloca);
+                }
+                scope->addVariable(arg->getName(), argAlloca);
+                argsBegin++;
+                break;
+            }
+            case AST::FuncDefArg::AST_ARG_TYPE_VARIADIC: {
+                auto *funcArgValue = argsBegin;
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");
+                funcArgValue->setName(arg->getName() + "VariadicArg");
+                builder->CreateStore(funcArgValue, argAlloca);
+                scope->addVariable(arg->getName(), argAlloca);
+                argsBegin++;
+                break;
+            }
+            case AST::FuncDefArg::AST_ARG_TYPE_BLOCK: {
+                logError("unpredicted second block arg");
+                return false;
+            }
+            case AST::FuncDefArg::AST_ARG_TYPE_MAP: {
+                AST::Symbol nameSym(arg->getName());
+                auto *val = codegenLangCall(langObjectCall1, std::vector<llvm::Value *>{
+                        mapArg, codegenSymbol(&hasKeySym), codegenSymbol(&nameSym)
+                });
+                auto *hasKey = codegenCastToBoolInt1(val);
+                auto *trueBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_provided", func);
+                auto *falseBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_useDefault", func);
+                auto *merge = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_merge", func);
+                builder->CreateCondBr(hasKey, trueBranch, falseBranch);
+                builder->SetInsertPoint(trueBranch);
+                auto *externalVal = codegenLangCall(langObjectCall1, std::vector<llvm::Value *>{
+                        mapArg, codegenSymbol(&getSym), codegenSymbol(&nameSym)
+                });
+                trueBranch = builder->GetInsertBlock();
+                builder->CreateBr(merge);
+                builder->SetInsertPoint(falseBranch);
+                auto *defaultVal = codegenStatement(arg->getDefaultValue());
+                falseBranch = builder->GetInsertBlock();
+                builder->CreateBr(merge);
+                builder->SetInsertPoint(merge);
+                auto *phi = builder->CreatePHI(voidpTy, 2, "arg_" + arg->getName() + "_phi");
+                phi->addIncoming(externalVal, trueBranch);
+                phi->addIncoming(defaultVal, falseBranch);
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");;
+                builder->CreateStore(phi, argAlloca);
+                scope->addVariable(arg->getName(), argAlloca);
+                break;
+            }
+        }
+    }
+    return true;
+}
+
+bool CodeGenerator::codegenArgsProcessingPreamble1(AST::FunctionDef *functionDef, llvm::Function *func) {
+    auto argsBegin = func->arg_begin();
+    auto argsEnd = func->arg_end();
+
+    auto selfArg = argsBegin;
+    auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_varAllocaPtr");
+    builder->CreateStore(selfArg, selfAlloca);
+    scope->addVariable("self", selfAlloca);
     selfArg->setName("self");
 
     argsBegin++;
@@ -459,9 +571,6 @@ llvm::Value *CodeGenerator::codegenBlock(AST::Block *block) {
 
 llvm::Value *CodeGenerator::codegenVariable(AST::Variable *variable) {
     auto *varPtr = scope->getVariable(variable->getName());
-    if (variable->getName() == "self") {
-        return varPtr;
-    }
     return builder->CreateLoad(voidpTy, varPtr, variable->getName());
 }
 
@@ -530,7 +639,6 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
 
 llvm::Value *CodeGenerator::codegenCastToBoolInt1(llvm::Value *ptr) {
     // ptr != nil & ptr != false -> true
-//    auto *intVal = builder->CreatePtrToInt(ptr, int64Ty, "ptrIntVal");
     auto *nilCheck = builder->CreateICmpNE(ptr, nilConst, "nilCheck");
     auto *boolType = builder->CreateICmpNE(ptr, falseConst, "falseCheck");
     auto *orVal = builder->CreateAnd(nilCheck, boolType);
@@ -553,7 +661,8 @@ llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, std::v
 }
 
 llvm::Value *CodeGenerator::codegenFor(AST::For *forAst) {
-//    forAst.;
+    auto *expt = codegenStatement(forAst->getExpr());
+
 }
 
 llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
@@ -641,7 +750,7 @@ llvm::Value *CodeGenerator::codegenCall(AST::Call *call) {
 llvm::Value *CodeGenerator::codegenCase(AST::Case *caseAst) {
     auto *arg = caseAst->getArg();
     auto &vec = caseAst->getCases();
-    // stores all temporary ast nodes in vectors to prevent memory leaks
+    // store all temporary ast nodes in vectors to prevent memory leaks
     std::vector<AST::If> ifs;
     std::vector<AST::BinaryOperation> ops;
     ifs.emplace_back(vec.back()->getCond(), vec.back()->getBlock(), nullptr);
@@ -685,6 +794,7 @@ llvm::Value *CodeGenerator::codegenReturn(AST::Return *returnAst) {
     }
     scope->markBlockAsTerminated();
     //todo handle terminated blocks
+    return nullptr;
 }
 
 llvm::Value *CodeGenerator::codegenYield(AST::Yield *yield) {
