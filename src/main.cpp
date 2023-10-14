@@ -14,6 +14,9 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
 #include "lang/Symbol.h"
+#include "loader/EmittedObject.h"
+#include "loader/ObjectArea.h"
+#include <llvm/Object/ObjectFile.h>
 
 using namespace UltraRuby;
 
@@ -66,6 +69,11 @@ int main() {
     auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
 def a(b, c, d, e = 5, w:1)
 end
+def b(expt,aaa,gccc)
+if expt
+puts 1
+end
+end
 )");
     auto fileLexerInput = std::make_shared<Lexer::FileLexerInput>(
             "/home/user/.local/share/wineprefixes/lona/drive_c/Games/LonaRPG/UltraRevEngine/Main.rb");
@@ -79,38 +87,20 @@ end
 
     auto &x = Lang::Symbol::getAllSymbols();
 
-    auto targetTriple = llvm::sys::getProcessTriple();
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmParser();
     llvm::InitializeNativeTargetAsmPrinter();
 
-    std::string error;
-    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
-    if (target == nullptr) {
-        std::cout << error << std::endl;
-        return -1;
-    }
+    Loader::EmittedObject eObj(codeGenerator);
 
-    auto cpu = "generic";
-    auto features = "";
-
-    llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>();
-    auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
-
-    codeGenerator.setTarget(targetMachine, targetTriple);
-
-    llvm::legacy::PassManager pass;
-    auto fileType = llvm::CodeGenFileType::ObjectFile;
-    auto filename = "output.o";
-    std::error_code EC;
-    llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
-    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType)) {
+    auto objExp = eObj.createELFObject();
+    if (!objExp) {
+        std::cout << "obj read error:" << toString(objExp.takeError()) << std::endl;
         return 1;
     }
-
-    codeGenerator.runPass(pass);
-
-    dest.flush();
+    auto &ref = objExp.get();
+    Loader::ObjectArea area;
+    auto func = area.loadObject(ref);
+    auto resp = func(nullptr);
     return 0;
 }

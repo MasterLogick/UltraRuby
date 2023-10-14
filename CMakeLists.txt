@@ -8,8 +8,7 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(ultra_ruby src/main.cpp
-        src/lexer/Lexer.cpp
+add_library(UltraRuby src/lexer/Lexer.cpp
         src/lexer/Lexer.h
         src/lexer/TokenType.h
         src/lexer/LexerInput.h
@@ -89,7 +88,16 @@ add_executable(ultra_ruby src/main.cpp
         src/lang/PrimaryConstants.cpp
         src/lang/PrimaryConstants.h
         src/ast/CaseWhereBlock.h
+        src/loader/ObjectArea.cpp
+        src/loader/ObjectArea.h
+        src/loader/EmittedObject.cpp
+        src/loader/EmittedObject.h
+        src/loader/MemoryArea.cpp
+        src/loader/MemoryArea.h
 )
-message(${LLVM_AVAILABLE_LIBS})
+
 llvm_map_components_to_libnames(llvm_libs core orcjit native)
-target_link_libraries(ultra_ruby ${llvm_libs})
+target_link_libraries(UltraRuby ${llvm_libs})
+
+add_executable(uruby src/main.cpp)
+target_link_libraries(uruby PUBLIC UltraRuby)
