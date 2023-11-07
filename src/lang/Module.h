@@ -8,7 +8,7 @@ namespace Lang {
 
 class Module : public Object {
 public:
-    static Object *defineModule(Symbol *nameSymbol, Module **classPtr, Object *(*definition)(Module *));
+    static Object *defineModule(Symbol *nameSymbol, Module **classPtr, Module *parent, Object *(*definition)(Module *));
 
 private:
 

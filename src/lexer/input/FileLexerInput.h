@@ -14,6 +14,7 @@ public:
 
     int getNextChar() override;
 
+    bool eof() override;
 private:
     std::ifstream ifstream;
 };

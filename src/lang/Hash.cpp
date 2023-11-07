@@ -2,7 +2,7 @@
 
 namespace UltraRuby {
 namespace Lang {
-Hash *Hash::alloc(int pairs, ...) {
+Hash *Hash::allocOnHeap(int pairs, ...) {
     return nullptr;
 }
 } // UltraRuby

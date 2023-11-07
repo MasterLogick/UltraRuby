@@ -4,10 +4,14 @@ namespace UltraRuby {
 namespace Lexer {
 int FileLexerInput::getNextChar() {
     int c = ifstream.get();
-    if (c == std::ifstream::traits_type::eof()) {
-        return EOF;
+    if (ifstream.eof()) {
+        return 0;
     }
     return c;
+}
+
+bool FileLexerInput::eof() {
+    return ifstream.eof();
 }
 } // UltraRuby
 } // Lexer

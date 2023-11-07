@@ -10,11 +10,11 @@ namespace Lang {
 
 class Class : public Object {
 public:
-    Class(Object *parent, const std::string &name, int size);
+    Class(Class *parent, const std::string &name, int size);
 
     static Object *defineClass(Symbol *nameSymbol, Class **classPtr, Class *parent, Object *(*definition)(Class *));
 
-    const HashInternal &getConsts() const {
+    HashInternal &getConsts() {
         return consts;
     }
 
@@ -22,7 +22,7 @@ public:
         return name;
     }
 
-    Object *getParent() const {
+    Class *getParent() const {
         return parent;
     }
 
@@ -33,7 +33,7 @@ public:
 private:
     HashInternal consts;
     std::string name;
-    Object *parent;
+    Class *parent;
     int instanceSize;
 };
 

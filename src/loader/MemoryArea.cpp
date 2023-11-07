@@ -24,5 +24,19 @@ void *MemoryArea::allocRegion(size_t size, llvm::Align align, int rights) {
     }
     return retVal;
 }
+
+void MemoryArea::setRegionRights(void *ptr, size_t size, int rights) {
+    auto prot = PROT_NONE;
+    if (rights & R) {
+        prot |= PROT_READ;
+    }
+    if (rights & W) {
+        prot |= PROT_WRITE;
+    }
+    if (rights & X) {
+        prot |= PROT_EXEC;
+    }
+    mprotect(ptr, size, prot);
+}
 } // UltraRuby
 } // Loader

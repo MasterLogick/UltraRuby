@@ -115,8 +115,13 @@ llvm::Function *CodeGenerator::codegenFunctionBody(AST::FunctionDef *functionDef
 }
 
 llvm::Constant *CodeGenerator::codegenSymbol(AST::Symbol *symbol) {
-    auto *s = Lang::Symbol::get(symbol->getSym());
-    return codegenPointer(s);
+    auto name = "sym_:" + symbol->getSym();
+    if (auto *l = module->getGlobalVariable(name)) {
+        return l;
+    }
+    auto *variable = new llvm::GlobalVariable(*module, voidpTy, true,
+                                              llvm::GlobalValue::ExternalLinkage, nullptr, name);
+    return variable;
 }
 
 llvm::Value *CodeGenerator::codegenIntegerConst(AST::IntegerConst *intConst) {
@@ -259,7 +264,8 @@ llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) 
             return nullptr;
     }
     if (binOp->getOperator() < AST::BIN_OP_ASSIGNMENT_START) {
-        AST::CallArgs args(std::vector<AST::Statement *>{binOp->getRight()}, nullptr, false, false);
+        AST::CallArgs args(std::vector<AST::Statement *>{binOp->getRight()}, std::map<std::string, AST::Statement *>(),
+                           nullptr, false);
         AST::Call call(opLabel, &args, binOp->getLeft());
         return codegenCall(&call);
     } else {
@@ -271,7 +277,6 @@ llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) 
 void CodeGenerator::declareExternLangFunctions() {
     std::vector<llvm::Type *> argTypes;
     voidpTy = llvm::PointerType::getUnqual(*context);
-    int64Ty = llvm::Type::getInt64Ty(*context);
     auto *int32Ty = llvm::Type::getInt32Ty(*context);
     auto *voidp_IntVariadic = llvm::FunctionType::get(
             voidpTy,
@@ -288,29 +293,40 @@ void CodeGenerator::declareExternLangFunctions() {
             std::vector<llvm::Type *>{voidpTy, voidpTy, int32Ty, int32Ty, voidpTy},
             false);
 
+    functionDefMetaType = llvm::StructType::create(*context, "FunctionDefMeta");
+    auto *int8Ty = llvm::Type::getInt8Ty(*context);
+    functionDefMetaType->setBody(
+            std::vector<llvm::Type *>{voidpTy, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty}, true);
+
     langArrayAlloc = llvm::Function::Create(voidp_IntVariadic, llvm::Function::ExternalLinkage,
-                                            "_ZN9UltraRuby4Lang5Array5allocEiz", *module);
+                                            "_ZN9UltraRuby4Lang5Array11allocOnHeapEiz", *module);
     langHashAlloc = llvm::Function::Create(voidp_IntVariadic, llvm::Function::ExternalLinkage,
-                                           "_ZN9UltraRuby4Lang4Hash5allocEiz", *module);
-    langObjectCall0 = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
-                                             "_ZN9UltraRuby4Lang6Object5call0EPNS0_6SymbolE", *module);
-    langObjectCall1 = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                             "_ZN9UltraRuby4Lang6Object5call1EPNS0_6SymbolEPS1_", *module);
-    langObjectCall2 = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
-                                             "_ZN9UltraRuby4Lang6Object5call2EPNS0_6SymbolEPS1_S4_", *module);
+                                           "_ZN9UltraRuby4Lang4Hash11allocOnHeapEiz", *module);
+    langObjectCall[0] = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
+                                               "_ZN9UltraRuby4Lang6Object5call0EPNS0_6SymbolE", *module);
+    langObjectCall[1] = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
+                                               "_ZN9UltraRuby4Lang6Object5call1EPNS0_6SymbolEPS1_", *module);
+    langObjectCall[2] = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
+                                               "_ZN9UltraRuby4Lang6Object5call2EPNS0_6SymbolEPS1_S4_", *module);
+    langObjectCall[3] =
+    langObjectCall[4] =
+    langObjectCall[5] = nullptr;
     langObjectCallV = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
                                              "_ZN9UltraRuby4Lang6Object5callVEPNS0_6SymbolEPS1_", *module);
-    langObjectDefineInstanceMethod = llvm::Function::Create(voidp_2voidp2intvoidp, llvm::Function::ExternalLinkage,
-                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEiiPv",
+    langObjectDefineInstanceMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
+                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_9MethodDefE",
                                                             *module);
-    langObjectDefineSingletonMethod = llvm::Function::Create(voidp_2voidp2intvoidp, llvm::Function::ExternalLinkage,
+    langObjectDefineSingletonMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
                                                              "_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEiiPv",
                                                              *module);
+    langObjectDefineClassInstance = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
+                                                           "_ZN9UltraRuby4Lang6Object19defineClassInstanceEPFPS1_S2_E",
+                                                           *module);
     langClassDefineClass = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
                                                   "_ZN9UltraRuby4Lang5Class11defineClassEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",
                                                   *module);
     langModuleDefineModule = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                    "_ZN9UltraRuby4Lang6Module12defineModuleEPNS0_6SymbolEPPS1_PFPNS0_6ObjectES4_E",
+                                                    "_ZN9UltraRuby4Lang6Module12defineModuleEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",
                                                     *module);
 
     nilConst = codegenPointer(Lang::PrimaryConstants::nilConst);
@@ -399,7 +415,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
             }
             case AST::FuncDefArg::AST_ARG_TYPE_MAP: {
                 AST::Symbol nameSym(arg->getName());
-                auto *val = codegenLangCall(langObjectCall1, std::vector<llvm::Value *>{
+                auto *val = codegenLangCall(langObjectCall[1], std::vector<llvm::Value *>{
                         mapArg, codegenSymbol(&hasKeySym), codegenSymbol(&nameSym)
                 });
                 auto *hasKey = codegenCastToBoolInt1(val);
@@ -408,7 +424,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
                 auto *merge = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_merge", func);
                 builder->CreateCondBr(hasKey, trueBranch, falseBranch);
                 builder->SetInsertPoint(trueBranch);
-                auto *externalVal = codegenLangCall(langObjectCall1, std::vector<llvm::Value *>{
+                auto *externalVal = codegenLangCall(langObjectCall[1], std::vector<llvm::Value *>{
                         mapArg, codegenSymbol(&getSym), codegenSymbol(&nameSym)
                 });
                 trueBranch = builder->GetInsertBlock();
@@ -487,7 +503,7 @@ llvm::Value *CodeGenerator::codegenUnaryOperation(AST::UnaryOperation *unaryOper
             logError("not an unary operation");
             return nullptr;
     }
-    AST::CallArgs args(std::vector<AST::Statement *>(), nullptr, false, false);
+    AST::CallArgs args(std::vector<AST::Statement *>(), std::map<std::string, AST::Statement *>(), nullptr, false);
     AST::Call call(op, &args, unaryOperation->getExpr());
     return codegenCall(&call);
 }
@@ -547,7 +563,7 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
     return codegenLangCall(langClassDefineClass, callArgs);
 }
 
-llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, std::vector<llvm::Value *> args) {
+llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args) {
     return builder->CreateCall(langFunction, args);
 }
 
@@ -576,10 +592,22 @@ llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
         self = codegenVariable(&s);
     }
     AST::Symbol sym(functionDef->getName());
-    std::vector<llvm::Value *> args{self, codegenSymbol(&sym),
-                                    builder->getInt32(functionDef->getMinArgsCount()),
-                                    builder->getInt32(functionDef->getMaxArgsCount()),
-                                    func};
+
+    auto meta = functionDef->createMethodDefMeta();
+    auto *cs = llvm::ConstantStruct::get(functionDefMetaType,
+                                         std::vector<llvm::Constant *>{
+                                                 func,
+                                                 builder->getInt8(meta.getRequiredArgsPrefixNum()),
+                                                 builder->getInt8(meta.getOptionalArgsNum()),
+                                                 builder->getInt8(meta.getVariadicPos()),
+                                                 builder->getInt8(meta.getRequiredArgsSuffixNum()),
+                                                 builder->getInt8(meta.getRequiredArgsTotalNum()),
+                                                 builder->getInt8(meta.getArgsTotalNum()),
+                                                 builder->getInt8(meta.getFlags()),
+                                         });
+    auto *var = new llvm::GlobalVariable(*module, functionDefMetaType, false, llvm::GlobalValue::ExternalLinkage, cs,
+                                         "functionDefMeta_:" + func->getName());
+    std::vector<llvm::Value *> args{self, codegenSymbol(&sym), var};
     if (functionDef->getSingleton() != nullptr) {
         return codegenLangCall(langObjectDefineSingletonMethod, args);
     } else {
@@ -618,7 +646,7 @@ llvm::Value *CodeGenerator::codegenClassInstanceDef(AST::ClassInstanceDef *class
                                  nullptr, classInstanceDef->getDefinition());
     auto *func = codegenFunction(&functionDef);
     std::vector<llvm::Value *> callArgs{codegenStatement(classInstanceDef->getInstance()), func};
-    return codegenLangCall(langObjectDefineSingletonMethod, callArgs);
+    return codegenLangCall(langObjectDefineClassInstance, callArgs);
 }
 
 llvm::Value *CodeGenerator::codegenBreak(AST::Break *breakAst) {
@@ -635,7 +663,24 @@ llvm::Value *CodeGenerator::codegenCall(AST::Call *call) {
         AST::Variable self("self");
         caller = codegenVariable(&self);
     }
-    return codegenLangCall(langObjectCall0, std::vector<llvm::Value *>{caller, symVal});
+    auto &args = call->getArgs()->getArgs();
+    if (args.size() < Lang::Object::MaxDirectArgsLen) {
+        std::vector<llvm::Value *> callArgs;
+        callArgs.push_back(caller);
+        callArgs.push_back(symVal);
+        for (const auto &item: args) {
+            auto *val = codegenStatement(item);
+            if (val == nullptr) {
+                return nullptr;
+            }
+            callArgs.push_back(val);
+        }
+        return codegenLangCall(langObjectCall[args.size()], callArgs);
+    } else {
+        AST::Array array(args);
+        auto *arr = codegenArray(&array);
+        return codegenLangCall(langObjectCallV, std::vector<llvm::Value *>{caller, symVal, arr});
+    }
 }
 
 llvm::Value *CodeGenerator::codegenCase(AST::Case *caseAst) {

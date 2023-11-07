@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <llvm/Object/ObjectFile.h>
+#include <set>
 #include "MemoryArea.h"
 #include "../lang/Object.h"
 
@@ -15,11 +16,11 @@ public:
     EntryPoint loadObject(const std::unique_ptr<llvm::object::ObjectFile> &object);
 
 private:
-    MemoryArea codeArea;
-    MemoryArea gdt;
+    MemoryArea objectArea;
 
-    std::map<std::string, uint64_t>
-    getLocalSymbols(const std::unique_ptr<llvm::object::ObjectFile> &object, const llvm::object::SectionRef &section);
+    static std::set<llvm::object::SymbolRef> getGOTEntryNum(const std::unique_ptr<llvm::object::ObjectFile> &pFile);
+
+    static std::set<llvm::object::SymbolRef> getPLTEntryNum(const std::unique_ptr<llvm::object::ObjectFile> &pFile);
 };
 } // UltraRuby
 } // Loader

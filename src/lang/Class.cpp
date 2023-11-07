@@ -7,7 +7,7 @@ Object *Class::defineClass(Symbol *nameSymbol, Class **classPtr, Class *parent, 
     return *classPtr;
 }
 
-Class::Class(Object *parent, const std::string &name, int size) : Object(BasicClasses::ClassClass) {
+Class::Class(Class *parent, const std::string &name, int size) : Object(BasicClasses::ClassClass) {
     this->name = name;
     this->parent = parent;
     this->instanceSize = size;

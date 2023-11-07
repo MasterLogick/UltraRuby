@@ -1,6 +1,7 @@
 #ifndef ULTRA_RUBY_AST_CALLARGS_H
 #define ULTRA_RUBY_AST_CALLARGS_H
 
+#include <utility>
 #include <vector>
 #include <memory>
 #include "Statement.h"
@@ -11,19 +12,20 @@ namespace AST {
 
 class CallArgs {
 public:
-    CallArgs(std::vector<Statement *> args, FunctionDef *block, bool parens, bool brackets)
-            : args(std::move(args)), block(block), parens(parens), brackets(brackets) {}
+    CallArgs(std::vector<Statement *> args, std::map<std::string, Statement *> namedArgs, FunctionDef *block,
+             bool brackets)
+            : args(std::move(args)), namedArgs(std::move(namedArgs)), block(block), brackets(brackets) {}
 
     inline const std::vector<Statement *> &getArgs() const {
         return args;
     }
 
-    inline FunctionDef *getBlock() const {
-        return block;
+    const std::map<std::string, Statement *> &getNamedArgs() const {
+        return namedArgs;
     }
 
-    inline bool hasParens() const {
-        return parens;
+    inline FunctionDef *getBlock() const {
+        return block;
     }
 
     inline bool hasBrackets() const {
@@ -32,8 +34,8 @@ public:
 
 private:
     std::vector<Statement *> args;
+    std::map<std::string, Statement *> namedArgs;
     FunctionDef *block;
-    bool parens;
     bool brackets;
 };
 

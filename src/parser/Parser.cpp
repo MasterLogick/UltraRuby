@@ -148,17 +148,17 @@ AST::Statement *Parser::parsePrimary() {
             if (!parseVariable(name, false)) {
                 return nullptr;
             }
-            auto args = parseCallArgs();
-            if (args == nullptr) {
+            auto argsParse = parseCallArgs();
+            if (argsParse.first == nullptr) {
                 return nullptr;
             }
-            obj = new AST::Call(std::move(name), args, obj);
+            obj = new AST::Call(std::move(name), argsParse.first, obj);
         } else if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
-            auto args = parseCallArgs();
-            if (args == nullptr) {
+            auto argsParse = parseCallArgs();
+            if (argsParse.first == nullptr) {
                 return nullptr;
             }
-            obj = new AST::Call(std::string(), args, obj);
+            obj = new AST::Call(std::string(), argsParse.first, obj);
         } else {
             rewindTo(ptr);
             return obj;
@@ -291,7 +291,7 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_RETURN: {
             nextLexerToken();
             skipSpaces();
-            return new AST::Return(parseCallArgs());
+            return new AST::Return(parseCallArgs().first);
         }
         case Lexer::TOK_NEXT: {
             nextLexerToken();
@@ -299,12 +299,12 @@ AST::Statement *Parser::parsePrimaryObject() {
             if (isATerm(currentLexerToken)) {
                 return new AST::Next(nullptr);
             }
-            return new AST::Next(parseCallArgs());
+            return new AST::Next(parseCallArgs().first);
         }
         case Lexer::TOK_BREAK: {
             nextLexerToken();
             skipSpaces();
-            return new AST::Break(parseCallArgs());
+            return new AST::Break(parseCallArgs().first);
         }
         case Lexer::TOK_REDO: {
             nextLexerToken();
@@ -316,7 +316,7 @@ AST::Statement *Parser::parsePrimaryObject() {
         }
         case Lexer::TOK_YIELD: {
             nextLexerToken();
-            return new AST::Yield(parseCallArgs());
+            return new AST::Yield(parseCallArgs().first);
         }
         case Lexer::TOK_YIELD_SELF: {
             nextLexerToken();
@@ -332,6 +332,7 @@ AST::Statement *Parser::parsePrimaryObject() {
             nextLexerToken(true);
             auto body = parseCompStatement();
             if (currentLexerToken == Lexer::TOK_END) {
+                nextLexerToken();
                 return new AST::If(cond, body, nullptr);
             }
             return parseIfBranches(cond, body);
@@ -609,9 +610,9 @@ AST::Statement *Parser::parsePrimaryObject() {
             if (!parseVariable(label, false)) {
                 return nullptr;
             }
-            auto args = parseCallArgs();
-            if (args->hasBrackets() || args->hasParens() || !args->getArgs().empty()) {
-                return new AST::Call(label, args, nullptr);
+            auto argsParse = parseCallArgs();
+            if (argsParse.first->hasBrackets() || argsParse.second || !argsParse.first->getArgs().empty()) {
+                return new AST::Call(label, argsParse.first, nullptr);
             } else {
                 return new AST::Variable(label);
             }
@@ -773,7 +774,7 @@ AST::Statement *Parser::parseIfBranches(
     return new AST::If(cond, trueBranch, falseBranch);
 }
 
-AST::CallArgs *Parser::parseCallArgs() {
+std::pair<AST::CallArgs *, bool> Parser::parseCallArgs() {
     bool expectTrailingParen = false;
     bool expectTrailingBracket = false;
     if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
@@ -787,14 +788,18 @@ AST::CallArgs *Parser::parseCallArgs() {
         }
     }
     skipSpaces();
-    std::vector<AST::Statement *> args;
     if (!expectTrailingParen && !expectTrailingBracket) {
         //todo handle hash argument case case
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
             auto block = parseBlock();
-            return new AST::CallArgs(std::move(args), block, false, false);
+            return {new AST::CallArgs(std::vector<AST::Statement *>(),
+                                      std::map<std::string, AST::Statement *>(), block, false),
+                    false};
         }
     }
+    std::vector<AST::Statement *> positionalArgs;
+    //todo handle named args
+    std::map<std::string, AST::Statement *> namedArgs;
     while (true) {
         if (expectTrailingParen || expectTrailingBracket) {
             skipTerms();
@@ -808,11 +813,11 @@ AST::CallArgs *Parser::parseCallArgs() {
             }
             if (expectTrailingParen || expectTrailingBracket) {
                 logError(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
-                return nullptr;
+                return {nullptr, false};
             }
             break;
         }
-        args.push_back(stmt);
+        positionalArgs.push_back(stmt);
         if (currentLexerToken == Lexer::TOK_COMMA) {
             nextLexerToken();
         } else if (expectTrailingBracket && currentLexerToken == Lexer::TOK_BRACKET_RIGHT ||
@@ -827,18 +832,20 @@ AST::CallArgs *Parser::parseCallArgs() {
                 nextLexerToken();
             } else {
                 logError(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
-                return nullptr;
+                return {nullptr, false};
             }
         }
     }
-    if (args.empty() || expectTrailingParen || expectTrailingBracket) {
+    if (positionalArgs.empty() || expectTrailingParen || expectTrailingBracket) {
         skipSpaces();
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
             auto block = parseBlock();
-            return new AST::CallArgs(std::move(args), block, expectTrailingParen, expectTrailingBracket);
+            return {new AST::CallArgs(std::move(positionalArgs), std::move(namedArgs), block, expectTrailingBracket),
+                    expectTrailingParen};
         }
     }
-    return new AST::CallArgs(std::move(args), nullptr, expectTrailingParen, expectTrailingBracket);
+    return {new AST::CallArgs(std::move(positionalArgs), std::move(namedArgs), nullptr, expectTrailingBracket),
+            expectTrailingParen};
 }
 
 AST::FunctionDef *Parser::parseBlock() {

@@ -32,48 +32,29 @@ int c(int x) {
     return x - 2;
 }
 
+Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
+    std::cout << arg << std::endl;
+    return Lang::PrimaryConstants::nilConst;
+}
+
 int main() {
-/*    int r[3];
-    std::map<void *, int (*)(int)> m{
-            {r,     a},
-            {r + 1, b},
-            {r + 2, c},
-    };
-    typedef int(*rrr)(int);
-    rrr arr[3] = {a, b, c};
-    int f = 5;
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 1'000'000'000; ++i) {
-        f = a(f);
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
-
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 1'000'000'000; ++i) {
-        f = arr[i % 3](f);
-    }
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
-
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 100'000'000; ++i) {
-        f = m[r + i % 3](f);
-    }
-    end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;*/
-
     Lang::BasicClasses::init();
     Lang::PrimaryConstants::init();
 
     auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
 def a(b, c, d, e = 5, w:1)
 end
-def b(expt,aaa,gccc)
-if expt
-puts 1
+
+def b(expt)
+  if expt
+    puts 1
+  end
 end
-end
+
+b false
+puts 123
+puts 456
+b true
 )");
     auto fileLexerInput = std::make_shared<Lexer::FileLexerInput>(
             "/home/user/.local/share/wineprefixes/lona/drive_c/Games/LonaRPG/UltraRevEngine/Main.rb");
@@ -84,8 +65,6 @@ end
     auto topLevel = new AST::FunctionDef("top_required", std::vector<AST::FuncDefArg *>(), nullptr, block);
     codeGenerator.codegenProgram(topLevel);
     codeGenerator.debugPrintModuleIR();
-
-    auto &x = Lang::Symbol::getAllSymbols();
 
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmParser();
@@ -101,6 +80,13 @@ end
     auto &ref = objExp.get();
     Loader::ObjectArea area;
     auto func = area.loadObject(ref);
-    auto resp = func(nullptr);
+
+    auto *main = new Lang::Object(Lang::BasicClasses::ObjectClass);
+    Lang::FunctionDefMeta meta{1, 0, -1, 0, false, false, reinterpret_cast<void *>(&Uputs)};
+    main->defineInstanceMethod(Lang::Symbol::get("puts"), &meta);
+
+    std::cout <<"entering ruby code. self: "<< main << std::endl;
+    auto resp = func(main);
+    std::cout <<"executed ruby code. ret val class: "<< resp->getObjectClass()->getName() << std::endl;
     return 0;
 }

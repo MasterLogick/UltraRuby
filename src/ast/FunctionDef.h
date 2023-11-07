@@ -7,6 +7,9 @@
 #include "FuncDefArg.h"
 
 namespace UltraRuby {
+namespace Lang {
+class FunctionDefMeta;
+}
 namespace AST {
 
 class FunctionDef : public Statement {
@@ -38,6 +41,8 @@ public:
     bool hasBlockArg();
 
     FuncDefArg *getBlockArg();
+
+    Lang::FunctionDefMeta createMethodDefMeta();
 
 private:
     std::string name;

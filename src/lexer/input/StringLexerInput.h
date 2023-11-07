@@ -13,6 +13,8 @@ public:
 
     int getNextChar() override;
 
+    bool eof() override;
+
 private:
     int pos;
     std::string input;

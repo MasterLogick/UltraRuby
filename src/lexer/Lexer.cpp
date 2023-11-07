@@ -103,6 +103,9 @@ bool isOp(int c) {
 }
 
 void Lexer::emmitToken() {
+    if (input->eof()) {
+        queue.pushBack(TOK_EOF);
+    }
     switch (lastChar) {
         case ' ':
         case '\t': {
@@ -112,9 +115,6 @@ void Lexer::emmitToken() {
             queue.pushBack(TOK_SPACE);
             return;
         }
-        case EOF:
-            queue.pushBack(TOK_EOF);
-            return;
         case '\n':
         case '\r': {
             //todo count new lines
@@ -149,8 +149,8 @@ void Lexer::emmitToken() {
         case '#': {
             do {
                 lastChar = input->getNextChar();
-            } while (lastChar != EOF && lastChar != '\n' && lastChar != '\r');
-            if (lastChar == EOF) {
+            } while (!input->eof() && lastChar != '\n' && lastChar != '\r');
+            if (input->eof()) {
                 queue.pushBack(TOK_EOF);
             } else {
                 queue.pushBack(TOK_NEWLINE);

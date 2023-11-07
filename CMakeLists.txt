@@ -94,6 +94,10 @@ add_library(UltraRuby src/lexer/Lexer.cpp
         src/loader/EmittedObject.h
         src/loader/MemoryArea.cpp
         src/loader/MemoryArea.h
+        src/lang/FunctionDefMeta.cpp
+        src/lang/FunctionDefMeta.h
+        src/lang/Proc.cpp
+        src/lang/Proc.h
 )
 
 llvm_map_components_to_libnames(llvm_libs core orcjit native)

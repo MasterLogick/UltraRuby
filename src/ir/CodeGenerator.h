@@ -96,7 +96,7 @@ private:
 
     llvm::Function *codegenFunction(AST::FunctionDef *functionDef);
 
-    llvm::Value *codegenLangCall(llvm::Function *langFunction, std::vector<llvm::Value *> args);
+    llvm::Value *codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *>& args);
 
     bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
 
@@ -113,6 +113,8 @@ private:
 
     llvm::PointerType *voidpTy;
     llvm::Type *int64Ty;
+    llvm::Type *int8Ty;
+    llvm::StructType *functionDefMetaType;
 
     llvm::Constant *nilConst;
     llvm::Constant *trueConst;
@@ -120,12 +122,11 @@ private:
 
     llvm::Function *langArrayAlloc;
     llvm::Function *langHashAlloc;
-    llvm::Function *langObjectCall0;
-    llvm::Function *langObjectCall1;
-    llvm::Function *langObjectCall2;
+    llvm::Function *langObjectCall[6];
     llvm::Function *langObjectCallV;
     llvm::Function *langObjectDefineInstanceMethod;
     llvm::Function *langObjectDefineSingletonMethod;
+    llvm::Function *langObjectDefineClassInstance;
     llvm::Function *langClassDefineClass;
     llvm::Function *langModuleDefineModule;
 };

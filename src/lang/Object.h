@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "HashInternal.h"
+#include "FunctionDefMeta.h"
 
 namespace UltraRuby {
 namespace Lang {
@@ -12,9 +13,15 @@ class HashInternal;
 
 class Symbol;
 
+class FunctionDefMeta;
+
 class Object {
 public:
     Object(Class *objectClass) : objectClass(objectClass) {}
+
+    static constexpr int MaxDirectArgsLen = 5;
+
+    FunctionDefMeta *findFunction(Symbol *name);
 
     Object *call0(Symbol *name);
 
@@ -24,9 +31,9 @@ public:
 
     Object *callV(Symbol *name, Object *args);
 
-    Symbol *defineInstanceMethod(Symbol *nameSymbol, int minArgs, int maxArgs, void *method);
+    Symbol *defineInstanceMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
 
-    Symbol *defineSingletonMethod(Symbol *nameSymbol, int minArgs, int maxArgs, void *method);
+    Symbol *defineSingletonMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
 
     Object *defineClassInstance(Object *(*)(Object *));
 

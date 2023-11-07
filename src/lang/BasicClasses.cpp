@@ -15,8 +15,7 @@ Class *BasicClasses::TrueClass = nullptr;
 Class *BasicClasses::FalseClass = nullptr;
 
 void BasicClasses::init() {
-    BasicObjectClass = reinterpret_cast<Class *>(new char[sizeof(Class)]);
-    BasicObjectClass = new(BasicObjectClass) Class(PrimaryConstants::nilConst, "BasicClass", sizeof(Object));
+    BasicObjectClass = new Class(nullptr, "BasicClass", sizeof(Object));
     ObjectClass = new Class(BasicObjectClass, "Object", sizeof(Object));
     ClassClass = new Class(ObjectClass, "Class", sizeof(Class));
     StringClass = new Class(ObjectClass, "String", sizeof(String));

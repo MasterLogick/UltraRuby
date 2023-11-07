@@ -8,6 +8,8 @@ public:
     virtual ~LexerInput() = default;
 
     virtual int getNextChar() = 0;
+
+    virtual bool eof() = 0;
 };
 
 }
