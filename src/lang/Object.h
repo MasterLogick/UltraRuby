@@ -15,21 +15,36 @@ class Symbol;
 
 class FunctionDefMeta;
 
+class Hash;
+
+class Proc;
+
 class Object {
 public:
     Object(Class *objectClass) : objectClass(objectClass) {}
 
     static constexpr int MaxDirectArgsLen = 5;
 
-    FunctionDefMeta *findFunction(Symbol *name);
+    template<class... Args>
+    Object *call(Symbol *name, Args ...oArgs);
 
-    Object *call0(Symbol *name);
+    Object *callV(Symbol *name, int n, Object **args);
 
-    Object *call1(Symbol *name, Object *arg1);
+    template<class... Args>
+    Object *callB(Symbol *name, Proc *block, Args ...args);
 
-    Object *call2(Symbol *name, Object *arg1, Object *arg2);
+    Object *callBV(Symbol *name, Proc *block, int n, Object **args);
 
-    Object *callV(Symbol *name, Object *args);
+    template<class... Args>
+    Object *callN(Symbol *name, Hash *namedMap, Args ...args);
+
+    Object *callNV(Symbol *name, Hash *namedMap, int n, Object **args);
+
+    template<class... Args>
+    Object *callNB(Symbol *name, Hash *namedMap, Proc *block, Args ...args);
+
+    Object *callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args);
+
 
     Symbol *defineInstanceMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
 
@@ -41,9 +56,7 @@ public:
         return objectClass;
     }
 
-    void setObjectClass(Class *oClass) {
-        Object::objectClass = oClass;
-    }
+private:
 
     const HashInternal &getSingletonMethods() const {
         return singletonMethods;
@@ -53,7 +66,8 @@ public:
         return additionalInstanceVariables;
     }
 
-private:
+    const FunctionDefMeta *findFunction(Symbol *name);
+
     Class *objectClass;
     HashInternal singletonMethods;
     HashInternal additionalInstanceVariables;

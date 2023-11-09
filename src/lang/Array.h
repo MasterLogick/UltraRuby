@@ -8,10 +8,10 @@ namespace Lang {
 
 class Array : public Object {
 public:
-    static Array *allocOnHeap(int size, ...);
+    static Array *allocOnHeap(int size, Object **arr);
 
 private:
-    std::vector<Object *> arrImpl;
+    std::vector<Object *> impl;
 };
 
 } // UltraRuby

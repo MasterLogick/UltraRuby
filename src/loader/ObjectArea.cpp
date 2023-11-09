@@ -27,8 +27,40 @@ llvm::Expected<llvm::object::ELFSectionRef> findSection(
 }
 
 auto Lang_Object_defineInstanceMethod = &Lang::Object::defineInstanceMethod;
-auto Lang_Object_call0 = &Lang::Object::call0;
-auto Lang_Object_call1 = &Lang::Object::call1;
+
+auto Lang_Object_call0 = &Lang::Object::call<>;
+auto Lang_Object_call1 = &Lang::Object::call<Lang::Object *>;
+auto Lang_Object_call2 = &Lang::Object::call<Lang::Object *, Lang::Object *>;
+auto Lang_Object_call3 = &Lang::Object::call<Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_call4 = &Lang::Object::call<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_call5 = &Lang::Object::call<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+
+auto Lang_Object_callB0 = &Lang::Object::callB<>;
+auto Lang_Object_callB1 = &Lang::Object::callB<Lang::Object *>;
+auto Lang_Object_callB2 = &Lang::Object::callB<Lang::Object *, Lang::Object *>;
+auto Lang_Object_callB3 = &Lang::Object::callB<Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callB4 = &Lang::Object::callB<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callB5 = &Lang::Object::callB<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+
+auto Lang_Object_callN0 = &Lang::Object::callN<>;
+auto Lang_Object_callN1 = &Lang::Object::callN<Lang::Object *>;
+auto Lang_Object_callN2 = &Lang::Object::callN<Lang::Object *, Lang::Object *>;
+auto Lang_Object_callN3 = &Lang::Object::callN<Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callN4 = &Lang::Object::callN<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callN5 = &Lang::Object::callN<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+
+auto Lang_Object_callNB0 = &Lang::Object::callNB<>;
+auto Lang_Object_callNB1 = &Lang::Object::callNB<Lang::Object *>;
+auto Lang_Object_callNB2 = &Lang::Object::callNB<Lang::Object *, Lang::Object *>;
+auto Lang_Object_callNB3 = &Lang::Object::callNB<Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callNB4 = &Lang::Object::callNB<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+auto Lang_Object_callNB5 = &Lang::Object::callNB<Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *, Lang::Object *>;
+
+auto Lang_Object_callV = &Lang::Object::callV;
+auto Lang_Object_callBV = &Lang::Object::callBV;
+auto Lang_Object_callNV = &Lang::Object::callNV;
+auto Lang_Object_callNBV = &Lang::Object::callNBV;
+
 auto Lang_Array_allocOnHeap = &Lang::Array::allocOnHeap;
 auto Lang_Hash_allocOnHeap = &Lang::Hash::allocOnHeap;
 auto Lang_Object_defineSingletonMethod = &Lang::Object::defineSingletonMethod;
@@ -37,25 +69,48 @@ auto Lang_Class_defineClass = &Lang::Class::defineClass;
 auto Lang_Module_defineModule = &Lang::Module::defineModule;
 
 const std::map<std::string, void *> langFunctions = {
-        {"_ZN9UltraRuby4Lang5Array11allocOnHeapEiz",
-                *reinterpret_cast<void **>(&Lang_Array_allocOnHeap)},
-        {"_ZN9UltraRuby4Lang4Hash11allocOnHeapEiz",
-                *reinterpret_cast<void **>(&Lang_Hash_allocOnHeap)},
-        {"_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_9MethodDefE",
-                *reinterpret_cast<void **>(&Lang_Object_defineInstanceMethod)},
-        {"_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEiiPv",
-                *reinterpret_cast<void **>(&Lang_Object_defineSingletonMethod)},
-        {"_ZN9UltraRuby4Lang6Object19defineClassInstanceEPFPS1_S2_E",
-                *reinterpret_cast<void **>(&Lang_Object_defineClassInstance)},
-        {"_ZN9UltraRuby4Lang5Class11defineClassEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",
-                *reinterpret_cast<void **>(&Lang_Class_defineClass)},
-        {"_ZN9UltraRuby4Lang6Module12defineModuleEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",
-                *reinterpret_cast<void **>(&Lang_Module_defineModule)},
+        {"_ZN9UltraRuby4Lang5Array11allocOnHeapEiPPNS0_6ObjectE",                                                        *reinterpret_cast<void **>(&Lang_Array_allocOnHeap)},
+        {"_ZN9UltraRuby4Lang4Hash11allocOnHeapEiPPNS0_6ObjectE",                                                         *reinterpret_cast<void **>(&Lang_Hash_allocOnHeap)},
 
-        {"_ZN9UltraRuby4Lang6Object5call0EPNS0_6SymbolE",
-                *reinterpret_cast<void **>(&Lang_Object_call0)},
-        {"_ZN9UltraRuby4Lang6Object5call1EPNS0_6SymbolEPS1_",
-                *reinterpret_cast<void **>(&Lang_Object_call1)},
+        {"_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_9MethodDefE",                   *reinterpret_cast<void **>(&Lang_Object_defineInstanceMethod)},
+        {"_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEiiPv",                              *reinterpret_cast<void **>(&Lang_Object_defineSingletonMethod)},
+        {"_ZN9UltraRuby4Lang6Object19defineClassInstanceEPFPS1_S2_E",                                       *reinterpret_cast<void **>(&Lang_Object_defineClassInstance)},
+        {"_ZN9UltraRuby4Lang5Class11defineClassEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",                  *reinterpret_cast<void **>(&Lang_Class_defineClass)},
+        {"_ZN9UltraRuby4Lang6Module12defineModuleEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",                *reinterpret_cast<void **>(&Lang_Module_defineModule)},
+
+        {"_ZN9UltraRuby4Lang6Object4callIJEEEPS1_PNS0_6SymbolEDpT_",                                        *reinterpret_cast<void **>(&Lang_Object_call0)},
+        {"_ZN9UltraRuby4Lang6Object4callIJPS1_EEES3_PNS0_6SymbolEDpT_",                                     *reinterpret_cast<void **>(&Lang_Object_call1)},
+        {"_ZN9UltraRuby4Lang6Object4callIJPS1_S3_EEES3_PNS0_6SymbolEDpT_",                                  *reinterpret_cast<void **>(&Lang_Object_call2)},
+        {"_ZN9UltraRuby4Lang6Object4callIJPS1_S3_S3_EEES3_PNS0_6SymbolEDpT_",                               *reinterpret_cast<void **>(&Lang_Object_call3)},
+        {"_ZN9UltraRuby4Lang6Object4callIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEDpT_",                            *reinterpret_cast<void **>(&Lang_Object_call4)},
+        {"_ZN9UltraRuby4Lang6Object4callIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEDpT_",                         *reinterpret_cast<void **>(&Lang_Object_call5)},
+
+        {"_ZN9UltraRuby4Lang6Object5callBIJEEEPS1_PNS0_6SymbolEPNS0_4ProcEDpT_",                            *reinterpret_cast<void **>(&Lang_Object_callB0)},
+        {"_ZN9UltraRuby4Lang6Object5callBIJPS1_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",                         *reinterpret_cast<void **>(&Lang_Object_callB1)},
+        {"_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",                      *reinterpret_cast<void **>(&Lang_Object_callB2)},
+        {"_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",                   *reinterpret_cast<void **>(&Lang_Object_callB3)},
+        {"_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",                *reinterpret_cast<void **>(&Lang_Object_callB4)},
+        {"_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",             *reinterpret_cast<void **>(&Lang_Object_callB5)},
+
+        {"_ZN9UltraRuby4Lang6Object5callNIJEEEPS1_PNS0_6SymbolEPNS0_4HashEDpT_",                            *reinterpret_cast<void **>(&Lang_Object_callN0)},
+        {"_ZN9UltraRuby4Lang6Object5callNIJPS1_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",                         *reinterpret_cast<void **>(&Lang_Object_callN1)},
+        {"_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",                      *reinterpret_cast<void **>(&Lang_Object_callN2)},
+        {"_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",                   *reinterpret_cast<void **>(&Lang_Object_callN3)},
+        {"_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",                *reinterpret_cast<void **>(&Lang_Object_callN4)},
+        {"_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",             *reinterpret_cast<void **>(&Lang_Object_callN5)},
+
+        {"_ZN9UltraRuby4Lang6Object6callNBIJEEEPS1_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",                *reinterpret_cast<void **>(&Lang_Object_callNB0)},
+        {"_ZN9UltraRuby4Lang6Object6callNBIJPS1_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",             *reinterpret_cast<void **>(&Lang_Object_callNB1)},
+        {"_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",          *reinterpret_cast<void **>(&Lang_Object_callNB2)},
+        {"_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",       *reinterpret_cast<void **>(&Lang_Object_callNB3)},
+        {"_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",    *reinterpret_cast<void **>(&Lang_Object_callNB4)},
+        {"_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_", *reinterpret_cast<void **>(&Lang_Object_callNB5)},
+
+        {"_ZN9UltraRuby4Lang6Object5callVEPNS0_6SymbolEiPPS1_",                                             *reinterpret_cast<void **>(&Lang_Object_callV)},
+        {"_ZN9UltraRuby4Lang6Object6callBVEPNS0_6SymbolEPNS0_4ProcEiPPS1_",                                 *reinterpret_cast<void **>(&Lang_Object_callBV)},
+        {"_ZN9UltraRuby4Lang6Object6callNVEPNS0_6SymbolEPNS0_4HashEiPPS1_",                                 *reinterpret_cast<void **>(&Lang_Object_callNV)},
+        {"_ZN9UltraRuby4Lang6Object7callNBVEPNS0_6SymbolEPNS0_4HashEPNS0_4ProcEiPPS1_",                     *reinterpret_cast<void **>(&Lang_Object_callNBV)},
+
 };
 
 ObjectArea::EntryPoint ObjectArea::loadObject(const std::unique_ptr<llvm::object::ObjectFile> &object) {

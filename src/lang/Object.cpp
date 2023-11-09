@@ -3,73 +3,403 @@
 #include "Class.h"
 #include "Symbol.h"
 #include "Array.h"
+#include "Hash.h"
+#include "PrimaryConstants.h"
 
 namespace UltraRuby {
 namespace Lang {
-using CallType = Object *(*)(Object *, Object *, Object *, Object *, Object *, Object *);
-using CallType0 = Object *(*)(Object *);
-using CallType1 = Object *(*)(Object *, Object *);
-using CallType2 = Object *(*)(Object *, Object *, Object *);
-using CallType3 = Object *(*)(Object *, Object *, Object *, Object *);
-using CallType4 = Object *(*)(Object *, Object *, Object *, Object *, Object *);
-using CallType5 = Object *(*)(Object *, Object *, Object *, Object *, Object *, Object *);
-using VariadicCallType = Object *(*)(Object *, Array *);
+using CallType = Object *(*)(Object *, ...);
 
-Object *Object::call0(Symbol *name) {
+#define CallEnding(namedMap, block, args)\
+if (func->hasNamedArgs()) {\
+    if (func->hasBlock()) {\
+        switch (func->getDirectArgsNum()) {\
+            case 0:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this,namedMap, block\
+                        );\
+            case 1:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap, block,\
+                        args[0]);\
+            case 2:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap, block,\
+                        args[0], args[1]);\
+            case 3:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap, block,\
+                        args[0], args[1], args[2]);\
+            case 4:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap, block,\
+                        args[0], args[1], args[2], args[3]);\
+            case 5:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap, block,\
+                        args[0], args[1], args[2], args[3], args[4]);\
+            default:\
+                return nullptr;\
+        }\
+    } else {\
+        switch (func->getDirectArgsNum()) {\
+            case 0:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap\
+                        );\
+            case 1:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap,\
+                        args[0]);\
+            case 2:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap,\
+                        args[0], args[1]);\
+            case 3:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap,\
+                        args[0], args[1], args[2]);\
+            case 4:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap,\
+                        args[0], args[1], args[2], args[3]);\
+            case 5:\
+                return reinterpret_cast<CallType>(func->getFunction())(\
+                        this, namedMap,\
+                        args[0], args[1], args[2], args[3], args[4]);\
+            default:\
+                return nullptr;\
+        }\
+    }\
+} else if (func->hasBlock()) {\
+    switch (func->getDirectArgsNum()) {\
+        case 0:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block\
+                    );\
+        case 1:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block,\
+                    args[0]);\
+        case 2:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block,\
+                    args[0], args[1]);\
+        case 3:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block,\
+                    args[0], args[1], args[2]);\
+        case 4:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block,\
+                    args[0], args[1], args[2], args[3]);\
+        case 5:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this, block,\
+                    args[0], args[1], args[2], args[3], args[4]);\
+        default:\
+            return nullptr;\
+    }\
+} else {\
+    switch (func->getDirectArgsNum()) {\
+        case 0:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this\
+                    );\
+        case 1:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this,\
+                    args[0]);\
+        case 2:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this,\
+                    args[0], args[1]);\
+        case 3:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this,\
+                    args[0], args[1], args[2]);\
+        case 4:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this,\
+                    args[0], args[1], args[2], args[3]);\
+        case 5:\
+            return reinterpret_cast<CallType>(func->getFunction())(\
+                    this,\
+                    args[0], args[1], args[2], args[3], args[4]);\
+        default:\
+            return nullptr;\
+    }\
+}
+
+template<class... Args>
+Object *Object::call(Symbol *name, Args ...oArgs) {
+    constexpr char CallNumArgs = sizeof...(oArgs);
     auto *func = findFunction(name);
     if (func == nullptr) {
-        // todo throw exception. (maybe even in findFunction)
+        // todo try find function using `respond_to?`
         return nullptr;
     }
-    if (func->getRequiredArgsTotalNum() != 0) {
-        // todo throw args count mismatch exception
+    if (func->getRequiredArgsTotalNum() > CallNumArgs) {
+        // todo throw oArgs count mismatch exception
         return nullptr;
     }
-    // todo save and clear lambda ptr in thread local storage
-    if (func->getVariadicPos() != -1) {
-        //todo variadic pos may be not null
-        if (func->getVariadicPos() != 0) {
-            // todo
+    if (func->isSimple()) {
+        if (func->getRequiredArgsTotalNum() != CallNumArgs) {
+            // todo throw oArgs count mismatch exception
             return nullptr;
         }
-        auto *arr = Array::allocOnHeap(0);
-        return reinterpret_cast<VariadicCallType>(func->getFunction())(this, arr);
+        return reinterpret_cast<CallType>(func->getFunction())(this, oArgs...);
     }
-    if (func->getOptionalArgsNum() != 0) {
-        switch (func->getOptionalArgsNum()) {
-            case 1:
-                return reinterpret_cast<CallType1>(func->getFunction())(this, nullptr);
-            case 2:
-                return reinterpret_cast<CallType2>(func->getFunction())(this, nullptr, nullptr);
-            case 3:
-                return reinterpret_cast<CallType3>(func->getFunction())(this, nullptr, nullptr, nullptr);
-            case 4:
-                return reinterpret_cast<CallType4>(func->getFunction())(this, nullptr, nullptr, nullptr, nullptr);
-            case 5:
-                return reinterpret_cast<CallType5>(func->getFunction())(this, nullptr, nullptr, nullptr, nullptr,
-                                                                        nullptr);
+    if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        Object *args[MaxDirectArgsLen];
+        // fill required prefix
+        for (int i = 0; i < func->getRequiredArgsPrefixNum(); ++i) {
+            args[i] = sargs[i];
         }
+        // fill required suffix
+        for (int i = -func->getRequiredArgsSuffixNum(); i < 0; ++i) {
+            args[func->getDirectArgsNum() + i] = sargs[CallNumArgs + i];
+        }
+        // fill provided optional args
+        for (int i = 0; i < func->getOptionalArgsNum() && i < CallNumArgs - func->getRequiredArgsTotalNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = sargs[func->getRequiredArgsPrefixNum() + i];
+        }
+        // zero lacking optional args
+        for (int i = CallNumArgs - func->getRequiredArgsTotalNum(); i < func->getOptionalArgsNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = nullptr;
+        }
+        // construct variadic
+        if (func->hasVariadic()) {
+            auto variadicStart = func->getRequiredArgsPrefixNum() + func->getOptionalArgsNum();
+            auto variadicLen = CallNumArgs - func->getDirectArgsNum() + 1;
+            if (variadicLen > 0) {
+                args[variadicStart] = Array::allocOnHeap(variadicLen, sargs + variadicStart);
+            } else {
+                args[variadicStart] = Array::allocOnHeap(0, nullptr);
+            }
+        }
+        CallEnding(nullptr, PrimaryConstants::nilConst, args)
+    } else {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        return callV(name, CallNumArgs, sargs);
     }
-    return reinterpret_cast<CallType0>(func->getFunction())(this);
 }
 
-Object *Object::call1(Symbol *name, Object *arg1) {
+template Object *Object::call(Symbol *);
+
+template Object *Object::call(Symbol *, Object *);
+
+template Object *Object::call(Symbol *, Object *, Object *);
+
+template Object *Object::call(Symbol *, Object *, Object *, Object *);
+
+template Object *Object::call(Symbol *, Object *, Object *, Object *, Object *);
+
+template Object *Object::call(Symbol *, Object *, Object *, Object *, Object *, Object *);
+
+template<class... Args>
+Object *Object::callB(Symbol *name, Proc *block, Args ...oArgs) {
+    constexpr char CallNumArgs = sizeof...(oArgs);
     auto *func = findFunction(name);
     if (func == nullptr) {
-        // todo throw exception. (maybe even in findFunction)
+        // todo try find function using `respond_to?`
         return nullptr;
     }
-    if (func->getRequiredArgsTotalNum() > 1 || func->getArgsTotalNum() == 0) {
-        // todo throw args count mismatch exception
+    if (func->getRequiredArgsTotalNum() > CallNumArgs) {
+        // todo throw oArgs count mismatch exception
         return nullptr;
     }
-    // todo save and clear lambda ptr in thread local storage
-    if (func->getVariadicPos() != -1) {
-        auto *arr = Array::allocOnHeap(1, arg1);
-        return reinterpret_cast<VariadicCallType>(func->getFunction())(this, arr);
+    if (func->isSimple()) {
+        if (func->getRequiredArgsTotalNum() != CallNumArgs) {
+            // todo throw oArgs count mismatch exception
+            return nullptr;
+        }
+        return reinterpret_cast<CallType>(func->getFunction())(this, oArgs...);
     }
-    return reinterpret_cast<CallType>(func->getFunction())(this, arg1, nullptr, nullptr, nullptr, nullptr);
+    if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        Object *args[MaxDirectArgsLen];
+        // fill required prefix
+        for (int i = 0; i < func->getRequiredArgsPrefixNum(); ++i) {
+            args[i] = sargs[i];
+        }
+        // fill required suffix
+        for (int i = -func->getRequiredArgsSuffixNum(); i < 0; ++i) {
+            args[func->getDirectArgsNum() + i] = sargs[CallNumArgs + i];
+        }
+        // fill provided optional args
+        for (int i = 0; i < func->getOptionalArgsNum() && i < CallNumArgs - func->getRequiredArgsTotalNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = sargs[func->getRequiredArgsPrefixNum() + i];
+        }
+        // zero lacking optional args
+        for (int i = CallNumArgs - func->getRequiredArgsTotalNum(); i < func->getOptionalArgsNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = nullptr;
+        }
+        // construct variadic
+        if (func->hasVariadic()) {
+            auto variadicStart = func->getRequiredArgsPrefixNum() + func->getOptionalArgsNum();
+            auto variadicLen = CallNumArgs - func->getDirectArgsNum() + 1;
+            if (variadicLen > 0) {
+                args[variadicStart] = Array::allocOnHeap(variadicLen, sargs + variadicStart);
+            } else {
+                args[variadicStart] = Array::allocOnHeap(0, nullptr);
+            }
+        }
+        CallEnding(nullptr, block, args)
+    } else {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        return callBV(name, block, CallNumArgs, sargs);
+    }
 }
+
+template Object *Object::callB(Symbol *, Proc *);
+
+template Object *Object::callB(Symbol *, Proc *, Object *);
+
+template Object *Object::callB(Symbol *, Proc *, Object *, Object *);
+
+template Object *Object::callB(Symbol *, Proc *, Object *, Object *, Object *);
+
+template Object *Object::callB(Symbol *, Proc *, Object *, Object *, Object *, Object *);
+
+template Object *Object::callB(Symbol *, Proc *, Object *, Object *, Object *, Object *, Object *);
+
+template<class... Args>
+Object *Object::callN(Symbol *name, Hash *namedMap, Args ...oArgs) {
+    constexpr char CallNumArgs = sizeof...(oArgs);
+    auto *func = findFunction(name);
+    if (func == nullptr) {
+        // todo try find function using `respond_to?`
+        return nullptr;
+    }
+    if (!func->hasNamedArgs()) {
+        if (CallNumArgs + 1 <= MaxDirectArgsLen) {
+            return call(name, oArgs..., (Object *) namedMap);
+        } else {
+            Object *sargs[] = {oArgs..., namedMap};
+            return callV(name, CallNumArgs + 1, sargs);
+        }
+    }
+    if (func->getRequiredArgsTotalNum() > CallNumArgs) {
+        // todo throw oArgs count mismatch exception
+        return nullptr;
+    }
+    if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        Object *args[MaxDirectArgsLen];
+        // fill required prefix
+        for (int i = 0; i < func->getRequiredArgsPrefixNum(); ++i) {
+            args[i] = sargs[i];
+        }
+        // fill required suffix
+        for (int i = -func->getRequiredArgsSuffixNum(); i < 0; ++i) {
+            args[func->getDirectArgsNum() + i] = sargs[CallNumArgs + i];
+        }
+        // fill provided optional args
+        for (int i = 0; i < func->getOptionalArgsNum() && i < CallNumArgs - func->getRequiredArgsTotalNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = sargs[func->getRequiredArgsPrefixNum() + i];
+        }
+        // zero lacking optional args
+        for (int i = CallNumArgs - func->getRequiredArgsTotalNum(); i < func->getOptionalArgsNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = nullptr;
+        }
+        // construct variadic
+        if (func->hasVariadic()) {
+            auto variadicStart = func->getRequiredArgsPrefixNum() + func->getOptionalArgsNum();
+            auto variadicLen = CallNumArgs - func->getDirectArgsNum() + 1;
+            if (variadicLen > 0) {
+                args[variadicStart] = Array::allocOnHeap(variadicLen, sargs + variadicStart);
+            } else {
+                args[variadicStart] = Array::allocOnHeap(0, nullptr);
+            }
+        }
+        CallEnding(namedMap, PrimaryConstants::nilConst, args)
+    } else {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        return callNV(name, namedMap, CallNumArgs, sargs);
+    }
+}
+
+template Object *Object::callN(Symbol *, Hash *);
+
+template Object *Object::callN(Symbol *, Hash *, Object *);
+
+template Object *Object::callN(Symbol *, Hash *, Object *, Object *);
+
+template Object *Object::callN(Symbol *, Hash *, Object *, Object *, Object *);
+
+template Object *Object::callN(Symbol *, Hash *, Object *, Object *, Object *, Object *);
+
+template Object *Object::callN(Symbol *, Hash *, Object *, Object *, Object *, Object *, Object *);
+
+template<class... Args>
+Object *Object::callNB(Symbol *name, Hash *namedMap, Proc *block, Args ...oArgs) {
+    constexpr char CallNumArgs = sizeof...(oArgs);
+    auto *func = findFunction(name);
+    if (func == nullptr) {
+        // todo try find function using `respond_to?`
+        return nullptr;
+    }
+    if (!func->hasNamedArgs()) {
+        if (CallNumArgs + 1 <= MaxDirectArgsLen) {
+            return callB(name, block, oArgs..., (Object *) namedMap);
+        } else {
+            Object *sargs[] = {oArgs..., namedMap};
+            return callBV(name, block, CallNumArgs + 1, sargs);
+        }
+    }
+    if (func->getRequiredArgsTotalNum() > CallNumArgs) {
+        // todo throw oArgs count mismatch exception
+        return nullptr;
+    }
+    if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        Object *args[MaxDirectArgsLen];
+        // fill required prefix
+        for (int i = 0; i < func->getRequiredArgsPrefixNum(); ++i) {
+            args[i] = sargs[i];
+        }
+        // fill required suffix
+        for (int i = -func->getRequiredArgsSuffixNum(); i < 0; ++i) {
+            args[func->getDirectArgsNum() + i] = sargs[CallNumArgs + i];
+        }
+        // fill provided optional args
+        for (int i = 0; i < func->getOptionalArgsNum() && i < CallNumArgs - func->getRequiredArgsTotalNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = sargs[func->getRequiredArgsPrefixNum() + i];
+        }
+        // zero lacking optional args
+        for (int i = CallNumArgs - func->getRequiredArgsTotalNum(); i < func->getOptionalArgsNum(); ++i) {
+            args[func->getRequiredArgsPrefixNum() + i] = nullptr;
+        }
+        // construct variadic
+        if (func->hasVariadic()) {
+            auto variadicStart = func->getRequiredArgsPrefixNum() + func->getOptionalArgsNum();
+            auto variadicLen = CallNumArgs - func->getDirectArgsNum() + 1;
+            if (variadicLen > 0) {
+                args[variadicStart] = Array::allocOnHeap(variadicLen, sargs + variadicStart);
+            } else {
+                args[variadicStart] = Array::allocOnHeap(0, nullptr);
+            }
+        }
+        CallEnding(namedMap, block, args)
+    } else {
+        Object *sargs[CallNumArgs] = {oArgs...};
+        return callNBV(name, namedMap, block, CallNumArgs, sargs);
+    }
+}
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *);
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *, Object *);
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *, Object *, Object *);
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *, Object *, Object *, Object *);
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *, Object *, Object *, Object *, Object *);
+
+template Object *Object::callNB(Symbol *, Hash *, Proc *, Object *, Object *, Object *, Object *, Object *);
 
 Symbol *Object::defineInstanceMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef) {
     objectClass->getConsts().set(nameSymbol, methodDef);
@@ -85,7 +415,7 @@ Object *Object::defineClassInstance(Object *(*)(Object *)) {
     return nullptr;
 }
 
-FunctionDefMeta *Object::findFunction(Symbol *name) {
+const FunctionDefMeta *Object::findFunction(Symbol *name) {
     // todo maybe check that name starts with low case
     auto *v = singletonMethods.get(name);
     if (v == nullptr) {
@@ -99,7 +429,24 @@ FunctionDefMeta *Object::findFunction(Symbol *name) {
             // todo search in global scope
         }
     }
-    return static_cast<FunctionDefMeta *>(v);
+    return static_cast<const FunctionDefMeta *>(v);
 }
+
+Object *Object::callV(Symbol *name, int n, Object **args) {
+
+}
+
+Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
+
+}
+
+Object *Object::callNV(Symbol *name, Hash *namedMap, int n, Object **args) {
+
+}
+
+Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args) {
+
+}
+
 } // UltraRuby
 } // Lang

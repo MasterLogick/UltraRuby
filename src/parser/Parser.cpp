@@ -661,43 +661,45 @@ AST::Block *Parser::parseCompStatement() {
 
 AST::Statement *Parser::parseArray() {
     std::vector<AST::Statement *> elements;
+    skipTerms();
+    if (currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
+        nextLexerToken();
+        return new AST::Array(std::move(elements));
+    }
     while (true) {
         auto el = parseStatement();
         if (el == nullptr) {
             return nullptr;
         }
         elements.push_back(el);
-        if (currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
-            break;
-        }
-        if (currentLexerToken != Lexer::TOK_COMMA) {
+        if (currentLexerToken == Lexer::TOK_COMMA) {
+            nextLexerToken();
+        } else if (currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
+            nextLexerToken();
+            return new AST::Array(std::move(elements));
+        } else {
             logError("expected \",\"");
             return nullptr;
         }
     }
-    return new AST::Array(std::move(elements));
 }
 
 AST::Statement *Parser::parseHash() {
     std::vector<std::pair<AST::Statement *, AST::Statement *>> hash;
+    skipTerms();
+    if (currentLexerToken == Lexer::TOK_BRACE_RIGHT) {
+        nextLexerToken();
+        return new AST::Hash(std::move(hash));
+    }
     while (true) {
-        skipTerms();
-        if (currentLexerToken == Lexer::TOK_BRACE_RIGHT) {
-            break;
-        }
         bool symbolAssoc = false;
+        int ptr = queue->getPtr();
         if (currentLexerToken == Lexer::TOK_IDENTIFIER) {
-            nextLexerToken();
-            if (currentLexerToken == Lexer::TOK_SPACE) {
-                nextLexerToken();
-                if (currentLexerToken == Lexer::TOK_SEMICOLON) {
-                    symbolAssoc = true;
-                }
-                prevLexerToken();
-            } else if (currentLexerToken == Lexer::TOK_SEMICOLON) {
+            nextLexerToken(true);
+            if (currentLexerToken == Lexer::TOK_COLON) {
                 symbolAssoc = true;
             }
-            prevLexerToken();
+            rewindTo(ptr);
         }
         if (symbolAssoc) {
             auto symbol = new AST::Symbol(queue->getStr());
@@ -722,18 +724,19 @@ AST::Statement *Parser::parseHash() {
             if (val == nullptr) {
                 return nullptr;
             }
-            hash.emplace_back(std::move(key), std::move(val));
+            hash.emplace_back(key, val);
         }
         skipTerms();
         if (currentLexerToken == Lexer::TOK_COMMA) {
             nextLexerToken();
+        } else if (currentLexerToken == Lexer::TOK_BRACE_RIGHT) {
+            nextLexerToken();
+            return new AST::Hash(std::move(hash));
         } else {
             logError("expected \",\" or \"}\"");
             return nullptr;
         }
     }
-    nextLexerToken();
-    return new AST::Hash(std::move(hash));
 }
 
 AST::Statement *Parser::parseIfBranches(

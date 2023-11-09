@@ -8,10 +8,10 @@ namespace Lang {
 
 class Hash : public Object {
 public:
-    static Hash *allocOnHeap(int pairs, ...);
+    static Hash *allocOnHeap(int n, Object** pairs);
 
 private:
-    HashInternal *impl;
+    HashInternal impl;
 };
 
 } // UltraRuby

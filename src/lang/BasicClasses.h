@@ -16,6 +16,8 @@ public:
     static Class *NilClass;
     static Class *TrueClass;
     static Class *FalseClass;
+    static Class *ArrayClass;
+    static Class *HashClass;
 
     static void init();
 };

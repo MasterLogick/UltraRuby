@@ -85,7 +85,7 @@ Lang::FunctionDefMeta FunctionDef::createMethodDefMeta() {
     char requiredPrefix = 0;
     char requiredSuffix = 0;
     char optional = 0;
-    char variadicPos = -1;
+    bool hasVariadic = false;
     bool namedArgs = false;
     bool capturesBlock = false;
     int i = 0;
@@ -94,7 +94,7 @@ Lang::FunctionDefMeta FunctionDef::createMethodDefMeta() {
             case FuncDefArg::AST_ARG_TYPE_NORMAL: {
                 if (item->getDefaultValue() != nullptr) {
                     optional++;
-                } else if (optional != 0 || variadicPos != -1) {
+                } else if (optional != 0 || hasVariadic ) {
                     requiredSuffix++;
                 } else {
                     requiredPrefix++;
@@ -102,7 +102,7 @@ Lang::FunctionDefMeta FunctionDef::createMethodDefMeta() {
                 break;
             }
             case FuncDefArg::AST_ARG_TYPE_VARIADIC: {
-                variadicPos = i;
+                hasVariadic = true;
                 break;
             }
             case FuncDefArg::AST_ARG_TYPE_BLOCK: {
@@ -118,7 +118,7 @@ Lang::FunctionDefMeta FunctionDef::createMethodDefMeta() {
         }
         i++;
     }
-    return {requiredPrefix, optional, variadicPos, requiredSuffix, namedArgs, capturesBlock, nullptr};
+    return {requiredPrefix, optional, hasVariadic, requiredSuffix, namedArgs, capturesBlock, nullptr};
 }
 }
 }

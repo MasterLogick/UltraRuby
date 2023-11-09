@@ -1,131 +1,71 @@
 #include <cassert>
 #include "TokenType.h"
 
+const char *tokenTypes[] = {
+        "TOK_ERROR",
+        "TOK_SPACE",
+        "TOK_EOF",
+        "TOK_NEWLINE",
+        "TOK_IDENTIFIER",
+        "TOK_FLOAT",
+        "TOK_INTEGER",
+        "TOK_COMMON_STRING",
+        "TOK_RAW_STRING",
+        "TOK_BEGIN_UPPER",
+        "TOK_BEGIN",
+        "TOK_END_UPPER",
+        "TOK_END",
+        "TOK_ALIAS",
+        "TOK_AND",
+        "TOK_BREAK",
+        "TOK_CASE",
+        "TOK_CLASS",
+        "TOK_DEF",
+        "TOK_DEFINED",
+        "TOK_DO",
+        "TOK_ELSE",
+        "TOK_ELSIF",
+        "TOK_ENSURE",
+        "TOK_FALSE",
+        "TOK_FOR",
+        "TOK_IN",
+        "TOK_MODULE",
+        "TOK_NEXT",
+        "TOK_NIL",
+        "TOK_NOT",
+        "TOK_OR",
+        "TOK_REDO",
+        "TOK_RESCUE",
+        "TOK_RETRY",
+        "TOK_RETURN",
+        "TOK_SELF",
+        "TOK_SUPER",
+        "TOK_THEN",
+        "TOK_TRUE",
+        "TOK_UNDEF",
+        "TOK_WHEN",
+        "TOK_YIELD",
+        "TOK_YIELD_SELF",
+        "TOK_IF",
+        "TOK_UNLESS",
+        "TOK_WHILE",
+        "TOK_UNTIL",
+        "TOK_OP",
+        "TOK_COMMA",
+        "TOK_DOT",
+        "TOK_COLON",
+        "TOK_DOUBLE_COLON",
+        "TOK_SEMICOLON",
+        "TOK_AT_SIGN",
+        "TOK_HASH_ASSOC",
+        "TOK_PAREN_LEFT",
+        "TOK_PAREN_RIGHT",
+        "TOK_BRACKET_LEFT",
+        "TOK_BRACKET_RIGHT",
+        "TOK_BRACE_LEFT",
+        "TOK_BRACE_RIGHT"
+};
+
 const char *UltraRuby::Lexer::strTokenType(UltraRuby::Lexer::TokenType type) {
-    switch (type) {
-        case TOK_ERROR:
-            return "TOK_ERROR";
-        case TOK_SPACE:
-            return "TOK_SPACE";
-        case TOK_EOF:
-            return "TOK_EOF";
-        case TOK_NEWLINE:
-            return "TOK_NEWLINE";
-        case TOK_IDENTIFIER:
-            return "TOK_IDENTIFIER";
-        case TOK_FLOAT:
-            return "TOK_FLOAT";
-        case TOK_INTEGER:
-            return "TOK_INTEGER";
-        case TOK_COMMON_STRING:
-            return "TOK_COMMON_STRING";
-        case TOK_RAW_STRING:
-            return "TOK_RAW_STRING";
-        case TOK_OP:
-            return "TOK_OP";
-        case TOK_COMMA:
-            return "TOK_COMMA";
-        case TOK_DOT:
-            return "TOK_DOT";
-        case TOK_DOUBLE_COLON:
-            return "TOK_DOUBLE_COLON";
-        case TOK_SEMICOLON:
-            return "TOK_SEMICOLON";
-        case TOK_PAREN_LEFT:
-            return "TOK_PAREN_LEFT";
-        case TOK_PAREN_RIGHT:
-            return "TOK_PAREN_RIGHT";
-        case TOK_BRACKET_LEFT:
-            return "TOK_BRACKET_LEFT";
-        case TOK_BRACKET_RIGHT:
-            return "TOK_BRACKET_RIGHT";
-        case TOK_BRACE_LEFT:
-            return "TOK_BRACE_LEFT";
-        case TOK_BRACE_RIGHT:
-            return "TOK_BRACE_RIGHT";
-        case TOK_BEGIN_UPPER:
-            return "TOK_BEGIN_UPPER";
-        case TOK_BEGIN:
-            return "TOK_BEGIN";
-        case TOK_END_UPPER:
-            return "TOK_END_UPPER";
-        case TOK_END:
-            return "TOK_END";
-        case TOK_ALIAS:
-            return "TOK_ALIAS";
-        case TOK_AND:
-            return "TOK_AND";
-        case TOK_BREAK:
-            return "TOK_BREAK";
-        case TOK_CASE:
-            return "TOK_CASE";
-        case TOK_CLASS:
-            return "TOK_CLASS";
-        case TOK_DEF:
-            return "TOK_DEF";
-        case TOK_DEFINED:
-            return "TOK_DEFINED";
-        case TOK_DO:
-            return "TOK_DO";
-        case TOK_ELSE:
-            return "TOK_ELSE";
-        case TOK_ELSIF:
-            return "TOK_ELSIF";
-        case TOK_ENSURE:
-            return "TOK_ENSURE";
-        case TOK_FALSE:
-            return "TOK_FALSE";
-        case TOK_FOR:
-            return "TOK_FOR";
-        case TOK_IN:
-            return "TOK_IN";
-        case TOK_MODULE:
-            return "TOK_MODULE";
-        case TOK_NEXT:
-            return "TOK_NEXT";
-        case TOK_NIL:
-            return "TOK_NIL";
-        case TOK_NOT:
-            return "TOK_NOT";
-        case TOK_OR:
-            return "TOK_OR";
-        case TOK_REDO:
-            return "TOK_REDO";
-        case TOK_RESCUE:
-            return "TOK_RESCUE";
-        case TOK_RETRY:
-            return "TOK_RETRY";
-        case TOK_RETURN:
-            return "TOK_RETURN";
-        case TOK_SELF:
-            return "TOK_SELF";
-        case TOK_SUPER:
-            return "TOK_SUPER";
-        case TOK_THEN:
-            return "TOK_THEN";
-        case TOK_TRUE:
-            return "TOK_TRUE";
-        case TOK_UNDEF:
-            return "TOK_UNDEF";
-        case TOK_WHEN:
-            return "TOK_WHEN";
-        case TOK_YIELD:
-            return "TOK_YIELD";
-        case TOK_YIELD_SELF:
-            return "TOK_YIELD_SELF";
-        case TOK_IF:
-            return "TOK_IF";
-        case TOK_UNLESS:
-            return "TOK_UNLESS";
-        case TOK_WHILE:
-            return "TOK_WHILE";
-        case TOK_UNTIL:
-            return "TOK_UNTIL";
-        case TOK_AT_SIGN:
-            return "TOK_AT_SIGN";
-        case TOK_HASH_ASSOC:
-            return "TOK_HASH_ASSOC";
-        default:
-            assert(0);
-    }
+    return tokenTypes[type];
 }

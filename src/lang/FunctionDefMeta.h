@@ -9,21 +9,22 @@ public:
     FunctionDefMeta(
             char requiredArgsPrefixNum,
             char optionalArgsNum,
-            char variadicPos,
+            bool hasVariadic,
             char requiredArgsSuffixNum,
             bool namedArgsPresent,
-            bool capturesBlock,
+            bool hasBlock,
             void *function
     ) :
             requiredArgsPrefixNum(requiredArgsPrefixNum),
             optionalArgsNum(optionalArgsNum),
-            variadicPos(variadicPos),
             requiredArgsSuffixNum(requiredArgsSuffixNum),
-            flags((namedArgsPresent ? 1 : 0) | (capturesBlock ? 2 : 0)),
+            flags((namedArgsPresent ? HasNamedArgsFlag : 0) | (hasBlock ? HasBlockFlag : 0) |
+                  (optionalArgsNum == 0 && !hasVariadic && requiredArgsSuffixNum == 0 && !namedArgsPresent &&
+                   !hasBlock ? SimpleFunctionFlag : 0) | (hasVariadic ? HasVariadicFlag : 0)),
             function(function),
             requiredArgsTotalNum(requiredArgsPrefixNum + requiredArgsSuffixNum),
-            argsTotalNum(requiredArgsPrefixNum + optionalArgsNum + requiredArgsSuffixNum + (namedArgsPresent ? 1 : 0) +
-                         (capturesBlock ? 1 : 0)) {}
+            directArgsNum(
+                    requiredArgsPrefixNum + optionalArgsNum + requiredArgsSuffixNum + (hasVariadic ? 1 : 0)) {}
 
     char getRequiredArgsPrefixNum() const {
         return requiredArgsPrefixNum;
@@ -33,8 +34,8 @@ public:
         return optionalArgsNum;
     }
 
-    char getVariadicPos() const {
-        return variadicPos;
+    bool hasVariadic() const {
+        return flags & HasVariadicFlag;
     }
 
     char getRequiredArgsSuffixNum() const {
@@ -42,11 +43,15 @@ public:
     }
 
     bool hasNamedArgs() const {
-        return flags & 1;
+        return flags & HasNamedArgsFlag;
     }
 
-    bool isCapturesBlock() const {
-        return flags & 2;
+    bool hasBlock() const {
+        return flags & HasBlockFlag;
+    }
+
+    bool isSimple() const {
+        return flags & SimpleFunctionFlag;
     }
 
     void *getFunction() const {
@@ -57,8 +62,8 @@ public:
         return requiredArgsTotalNum;
     }
 
-    char getArgsTotalNum() const {
-        return argsTotalNum;
+    char getDirectArgsNum() const {
+        return directArgsNum;
     }
 
     char getFlags() const {
@@ -66,14 +71,16 @@ public:
     }
 
 private:
+    static constexpr char HasNamedArgsFlag = 1;
+    static constexpr char HasBlockFlag = 2;
+    static constexpr char SimpleFunctionFlag = 4;
+    static constexpr char HasVariadicFlag = 8;
     void *function;
     char requiredArgsPrefixNum;
     char optionalArgsNum;
-    char variadicPos;
     char requiredArgsSuffixNum;
     char requiredArgsTotalNum;
-
-    char argsTotalNum;
+    char directArgsNum;
     char flags;
 };
 
