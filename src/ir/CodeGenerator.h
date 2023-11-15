@@ -8,6 +8,7 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Target/TargetMachine.h>
+#include <set>
 #include "Scope.h"
 #include "../ast/ASTClassDecls.h"
 
@@ -37,7 +38,7 @@ private:
 
     llvm::Value *codegenBlock(AST::Block *block);
 
-    llvm::Constant *codegenBoolConst(bool val);
+    llvm::LoadInst *codegenBoolConst(bool val);
 
     llvm::Value *codegenBreak(AST::Break *breakAst);
 
@@ -75,9 +76,9 @@ private:
 
     llvm::Value *codegenStatement(AST::Statement *statement);
 
-    llvm::Constant *codegenString(AST::String *str);
+    llvm::LoadInst *codegenString(AST::String *str);
 
-    llvm::Constant *codegenSymbol(AST::Symbol *symbol);
+    llvm::LoadInst *codegenSymbol(AST::Symbol *symbol);
 
     llvm::Value *codegenUnaryOperation(AST::UnaryOperation *unaryOperation);
 
@@ -96,11 +97,17 @@ private:
 
     llvm::Function *codegenFunction(AST::FunctionDef *functionDef);
 
-    llvm::Value *codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *>& args);
+    llvm::Value *codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args);
 
     bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
 
     llvm::Constant *codegenPointer(void *data);
+
+    llvm::Constant *codegenConstPointer(const void *data);
+
+    llvm::Value *codegenGetObjectClass(llvm::Value *object);
+
+    bool codegenInitializer();
 
     void declareExternLangFunctions();
 
@@ -109,12 +116,15 @@ private:
     std::unique_ptr<llvm::LLVMContext> context;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
+    std::map<std::string, llvm::GlobalVariable *> syms;
+    std::map<std::string, llvm::GlobalVariable *> strs;
     Scope *scope;
 
     llvm::PointerType *voidpTy;
     llvm::Type *int64Ty;
     llvm::Type *int8Ty;
     llvm::StructType *functionDefMetaType;
+    llvm::StructType *exceptionHandlerType;
 
     llvm::Constant *nilConst;
     llvm::Constant *trueConst;
@@ -135,6 +145,14 @@ private:
     llvm::Function *langObjectDefineClassInstance;
     llvm::Function *langClassDefineClass;
     llvm::Function *langModuleDefineModule;
+    llvm::Function *langSymbolGet;
+    llvm::Function *langStringGet;
+
+    llvm::Function *cxaBeginCatch;
+    llvm::Function *cxaEndCatch;
+    llvm::Constant *gxxPersonalityV0;
+    llvm::Function *cxaGetExceptionPtr;
+    llvm::Constant *exceptionTypeInfo;
 };
 
 } // UltraRuby

@@ -215,7 +215,7 @@ AST::Statement *Parser::parsePrimaryObject() {
             if (mainBlock == nullptr) {
                 return nullptr;
             }
-            std::vector<std::tuple<AST::Statement *, std::string, AST::Block *>> rescues;
+            std::vector<AST::Rescue *> rescues;
             while (currentLexerToken == Lexer::TOK_RESCUE) {
                 nextLexerToken(true);
                 AST::Statement *type(nullptr);
@@ -246,15 +246,15 @@ AST::Statement *Parser::parsePrimaryObject() {
                 }
                 nextLexerToken();
                 auto body = parseCompStatement();
-                rescues.emplace_back(type, std::move(var), body);
+                rescues.push_back(new AST::Rescue(type, std::move(var), body));
             }
-            AST::Block *elseBlock(nullptr);
             if (currentLexerToken == Lexer::TOK_ELSE) {
                 nextLexerToken();
-                elseBlock = parseCompStatement();
+                auto elseBlock = parseCompStatement();
                 if (elseBlock == nullptr) {
                     return nullptr;
                 }
+                mainBlock = new AST::Block({mainBlock, elseBlock});
             }
             AST::Block *ensureBlock(nullptr);
             if (currentLexerToken == Lexer::TOK_ENSURE) {
@@ -268,7 +268,7 @@ AST::Statement *Parser::parsePrimaryObject() {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return new AST::ExceptionalBlock(mainBlock, rescues, elseBlock, ensureBlock);
+            return new AST::ExceptionalBlock(mainBlock, rescues, ensureBlock);
         }
         case Lexer::TOK_PAREN_LEFT: {
             nextLexerToken();

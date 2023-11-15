@@ -21,6 +21,8 @@ class Proc;
 
 class Object {
 public:
+    static constexpr int ObjectClassOffset = 0;
+
     Object(Class *objectClass) : objectClass(objectClass) {}
 
     static constexpr int MaxDirectArgsLen = 5;

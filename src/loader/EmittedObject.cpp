@@ -2,11 +2,19 @@
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Target/TargetOptions.h>
 #include "EmittedObject.h"
-#include <sys/mman.h>
+#include <lld/Common/Driver.h>
 #include <fcntl.h>
+
+LLD_HAS_DRIVER(elf)
 
 namespace UltraRuby {
 namespace Loader {
+int createTmpFile(char name[7]) {
+    memcpy(name, "XXXXXX", 7);
+    int d = mkstemp(name);
+    return d;
+}
+
 EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
     auto targetTriple = llvm::sys::getProcessTriple();
 
@@ -19,7 +27,7 @@ EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
     auto cpu = llvm::sys::getHostCPUName();
     auto features = "";
     llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>(llvm::Reloc::Static);
+    auto rm = std::optional<llvm::Reloc::Model>(llvm::Reloc::PIC_);
     auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
 
     codeGenerator.setTarget(targetMachine, targetTriple);
@@ -27,20 +35,32 @@ EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
     llvm::legacy::PassManager pass;
     auto fileType = llvm::CodeGenFileType::ObjectFile;
 
-    // int fd = open("output.o", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    int fd = memfd_create("", 0);
-    llvm::raw_fd_ostream dest(fd, false);
+    char oName[7];
+//    int o = createTmpFile(oName);
+    memcpy(oName, "obj.o", 6);
+    int o = open(oName, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    llvm::raw_fd_ostream dest(o, false);
     if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType)) {
         // todo throw exception
     }
 
     codeGenerator.runPass(pass);
-    len = lseek64(fd, 0, SEEK_END);
-    data = static_cast<char *>(mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+//    fd = createTmpFile(name);
+    memcpy(name, "obj.so", 7);
+    fd = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+
+    auto res = lld::lldMain({"ld.lld", "-z", "relro", "-shared", "--eh-frame-hdr", "-o", name, oName}, llvm::outs(),
+                            llvm::errs(),
+                            {{lld::Gnu, &lld::elf::link}});
+    if (res.retCode != 0) {
+        throw std::exception();
+    }
+    close(o);
 }
 
-llvm::Expected<std::unique_ptr<llvm::object::ObjectFile>> EmittedObject::createELFObject() {
-    return llvm::object::ObjectFile::createELFObjectFile(llvm::MemoryBufferRef(llvm::StringRef(data, len), ""));
+EmittedObject::~EmittedObject() {
+    close(fd);
+//    remove(name);
 }
 } // UltraRuby
 } // Loader

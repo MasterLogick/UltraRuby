@@ -11,6 +11,7 @@ public:
     static Class *BasicObjectClass;
     static Class *ObjectClass;
     static Class *ClassClass;
+    static Class *ModuleClass;
     static Class *StringClass;
     static Class *SymbolClass;
     static Class *NilClass;

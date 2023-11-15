@@ -9,7 +9,7 @@ namespace Lexer {
 
 class StringLexerInput : public LexerInput {
 public:
-    StringLexerInput(const std::string &input) : input(input) {}
+    StringLexerInput(const std::string &input) : input(input), pos(0) {}
 
     int getNextChar() override;
 

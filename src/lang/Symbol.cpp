@@ -3,6 +3,7 @@
 #include "BasicClasses.h"
 #include <map>
 #include <mutex>
+#include <iostream>
 
 namespace UltraRuby {
 namespace Lang {

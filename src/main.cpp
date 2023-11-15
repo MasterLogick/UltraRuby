@@ -3,7 +3,6 @@
 #include "lexer/input/StringLexerInput.h"
 #include "parser/Parser.h"
 #include "ir/CodeGenerator.h"
-#include "lexer/input/FileLexerInput.h"
 #include "ast/AST.h"
 #include "lang/BasicClasses.h"
 #include "lang/PrimaryConstants.h"
@@ -12,14 +11,18 @@
 #include <llvm/TargetParser/Host.h>
 #include "lang/Symbol.h"
 #include "loader/EmittedObject.h"
-#include "loader/ObjectArea.h"
-#include <llvm/Object/ObjectFile.h>
+#include "lang/Exception.h"
+#include <dlfcn.h>
 
 using namespace UltraRuby;
 
 Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
-    std::cout << arg << std::endl;
+    std::cout << self << " " << arg << std::endl;
     return Lang::PrimaryConstants::nilConst;
+}
+
+Lang::Object *Uraise(Lang::Object *self, Lang::Object *arg) {
+    throw Lang::Exception(arg);
 }
 
 int main() {
@@ -27,11 +30,11 @@ int main() {
     Lang::PrimaryConstants::init();
 
     auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
-def b(expt)
-  [[], {5=>2}]
+begin
+  raise "test"
+rescue => b
+  puts b
 end
-
-b true
 )");
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);
     auto parser = std::make_shared<Parser::Parser>(lexer->getQueue());
@@ -39,31 +42,43 @@ b true
     IR::CodeGenerator codeGenerator;
     auto topLevel = new AST::FunctionDef("top_required", std::vector<AST::FuncDefArg *>(), nullptr, block);
     codeGenerator.codegenProgram(topLevel);
-    codeGenerator.debugPrintModuleIR();
 
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmParser();
     llvm::InitializeNativeTargetAsmPrinter();
 
     Loader::EmittedObject eObj(codeGenerator);
-
-    auto objExp = eObj.createELFObject();
-    if (!objExp) {
-        std::cout << "obj read error:" << toString(objExp.takeError()) << std::endl;
-        return 1;
-    }
-    auto &ref = objExp.get();
-    Loader::ObjectArea area;
-    auto func = area.loadObject(ref);
-    if (func == nullptr) {
+    codeGenerator.debugPrintModuleIR();
+    char *cwd = getcwd(nullptr, 0);
+    std::string path(cwd);
+    free(cwd);
+    path += "/";
+    path += eObj.name;
+    auto *f = dlopen(path.c_str(), RTLD_NOW);
+    if (f == nullptr) {
+        std::cout << dlerror() << std::endl;
         return -1;
     }
-
+    auto *init = reinterpret_cast<void (*)()>(dlsym(f, "__init__"));
+    if (init) {
+        init();
+    }
+    auto *func = reinterpret_cast<Lang::Object *(*)(Lang::Object *)>(dlsym(f, "top_required"));
+    if (func == nullptr) {
+        std::cout << "not found entry point in library" << std::endl;
+        return -1;
+    }
     auto *main = new Lang::Object(Lang::BasicClasses::ObjectClass);
-    Lang::FunctionDefMeta meta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uputs)};
-    main->defineInstanceMethod(Lang::Symbol::get("puts"), &meta);
+    Lang::FunctionDefMeta putsMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uputs)};
+    main->defineInstanceMethod(Lang::Symbol::get("puts"), &putsMeta);
+    Lang::FunctionDefMeta raiseMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uraise)};
+    main->defineInstanceMethod(Lang::Symbol::get("raise"), &raiseMeta);
     std::cout << "entering ruby code. self: " << main << std::endl;
-    auto resp = func(main);
-    std::cout << "executed ruby code. ret val class: " << resp->getObjectClass()->getName() << std::endl;
+    try {
+        auto resp = func(main);
+        std::cout << "executed ruby code. ret val class: " << resp->getObjectClass()->getName() << std::endl;
+    } catch (Lang::Exception &e) {
+        std::cout << "uncaught lang exception" << std::endl;
+    }
     return 0;
 }

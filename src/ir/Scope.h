@@ -6,6 +6,7 @@
 #include <memory>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Instructions.h>
+#include <deque>
 #include "../ast/FunctionDef.h"
 #include "../ast/Variable.h"
 #include "../ast/ClassDef.h"
@@ -44,11 +45,18 @@ public:
 
     void markBlockAsTerminated();
 
+    void pushHandlerBlock(llvm::BasicBlock *pBlock);
+
+    void popHandlerBlock();
+
+    llvm::BasicBlock *getRescueBlock();
+
 private:
     Scope(Scope *outer);
 
     Scope *outer;
     std::map<std::string, llvm::Value *> vars;
+    std::deque<llvm::BasicBlock *> deque;
 };
 
 } // UltraRuby

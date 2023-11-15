@@ -4,13 +4,16 @@
 #include "../lang/String.h"
 #include "../ast/AST.h"
 #include "../lang/PrimaryConstants.h"
+#include "../lang/Exception.h"
 #include <llvm/IR/Verifier.h>
+#include <llvm/Transforms/Utils/ModuleUtils.h>
 
 namespace UltraRuby {
 namespace IR {
 constexpr bool voidpIsUint64 = sizeof(void *) == sizeof(uint64_t);
 
 CodeGenerator::CodeGenerator() {
+    scope = new Scope();
     context = std::make_unique<llvm::LLVMContext>();
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
     module = std::make_unique<llvm::Module>("ultra-ruby", *context);
@@ -18,11 +21,13 @@ CodeGenerator::CodeGenerator() {
 }
 
 llvm::Function *CodeGenerator::codegenProgram(AST::FunctionDef *topLevelDecl) {
-    scope = new Scope();
-    return codegenFunction(topLevelDecl);
+    auto *v = codegenFunction(topLevelDecl);
+    v->setLinkage(llvm::GlobalValue::ExternalLinkage);
+    return v;
 }
 
 llvm::Value *CodeGenerator::codegenStatement(AST::Statement *statement) {
+    assert(statement);
     switch (statement->type) {
         case AST::STMT_UNKNOWN:
             return nullptr;
@@ -95,7 +100,7 @@ llvm::Function *CodeGenerator::codegenFunctionBody(AST::FunctionDef *functionDef
     auto args = functionDef->getArgs();
     std::vector<llvm::Type *> argTypes(functionDef->getMaxArgsCount() + 1, voidpTy);
     auto *ft = llvm::FunctionType::get(voidpTy, argTypes, false);
-    func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, name, *module);
+    func = llvm::Function::Create(ft, llvm::Function::PrivateLinkage, name, *module);
     scope->enterFunctionBody(functionDef);
     auto *bb = llvm::BasicBlock::Create(*context, "entry", func);
     builder->SetInsertPoint(bb);
@@ -114,14 +119,15 @@ llvm::Function *CodeGenerator::codegenFunctionBody(AST::FunctionDef *functionDef
     return func;
 }
 
-llvm::Constant *CodeGenerator::codegenSymbol(AST::Symbol *symbol) {
-    auto name = "sym_:" + symbol->getSym();
-    if (auto *l = module->getGlobalVariable(name)) {
-        return l;
+llvm::LoadInst *CodeGenerator::codegenSymbol(AST::Symbol *symbol) {
+    auto name = "sym:" + symbol->getSym();
+    if (auto *l = module->getGlobalVariable(name, true)) {
+        return builder->CreateLoad(voidpTy, l);
     }
-    auto *variable = new llvm::GlobalVariable(*module, voidpTy, true,
-                                              llvm::GlobalValue::ExternalLinkage, nullptr, name);
-    return variable;
+    auto *variable = new llvm::GlobalVariable(*module, voidpTy, false, llvm::GlobalValue::PrivateLinkage,
+                                              llvm::ConstantPointerNull::get(voidpTy), name);
+    syms.emplace(symbol->getSym(), variable);
+    return builder->CreateLoad(voidpTy, variable);
 }
 
 llvm::Value *CodeGenerator::codegenIntegerConst(AST::IntegerConst *intConst) {
@@ -145,12 +151,27 @@ llvm::Value *CodeGenerator::codegenFloatConst(AST::FloatConst *floatConst) {
     }
 }
 
-llvm::Constant *CodeGenerator::codegenString(AST::String *str) {
-    auto *s = Lang::String::get(str->getStr());
-    return codegenPointer(s);
+llvm::LoadInst *CodeGenerator::codegenString(AST::String *str) {
+    auto name = "str:" + str->getStr();
+    if (auto *l = module->getGlobalVariable(name, true)) {
+        return builder->CreateLoad(voidpTy, l);
+    }
+    auto *variable = new llvm::GlobalVariable(*module, voidpTy, false, llvm::GlobalValue::PrivateLinkage,
+                                              llvm::ConstantPointerNull::get(voidpTy), name);
+    strs.emplace(str->getStr(), variable);
+    return builder->CreateLoad(voidpTy, variable);
 }
 
 llvm::Constant *CodeGenerator::codegenPointer(void *data) {
+    if (voidpIsUint64) {
+        return llvm::Constant::getIntegerValue(voidpTy, llvm::APInt(64, reinterpret_cast<uint64_t>(data)));
+    } else {
+        //todo handle 32-bit cases
+        assert(false);
+    }
+}
+
+llvm::Constant *CodeGenerator::codegenConstPointer(const void *data) {
     if (voidpIsUint64) {
         return llvm::Constant::getIntegerValue(voidpTy, llvm::APInt(64, reinterpret_cast<uint64_t>(data)));
     } else {
@@ -170,7 +191,7 @@ llvm::Value *CodeGenerator::codegenArray(AST::Array *array) {
         if (el == nullptr) {
             return nullptr;
         }
-        builder->CreateStore(el, builder->CreateAdd(arrAlloca, builder->getInt32(i * sizeof(void *))));
+        builder->CreateStore(el, builder->CreateGEP(voidpTy, arrAlloca, {builder->getInt32(i)}));
     }
     return codegenLangCall(langArrayAlloc, {builder->getInt32(elems.size()), arrAlloca});
 }
@@ -187,9 +208,8 @@ llvm::Value *CodeGenerator::codegenHash(AST::Hash *hash) {
             return nullptr;
         }
         auto *v = codegenStatement(pairs[i].second);
-        builder->CreateStore(k, builder->CreateAdd(arrAlloca, builder->getInt32(i * 2 * sizeof(void *))));
-        builder->CreateStore(v,
-                             builder->CreateAdd(arrAlloca, builder->getInt32(i * 2 * sizeof(void *) + sizeof(void *))));
+        builder->CreateStore(k, builder->CreateGEP(voidpTy, arrAlloca, {builder->getInt32(i * 2)}));
+        builder->CreateStore(v, builder->CreateGEP(voidpTy, arrAlloca, {builder->getInt32(i * 2 + 1)}));
     }
     return codegenLangCall(langHashAlloc, {builder->getInt32(pairs.size()), arrAlloca});
 }
@@ -287,11 +307,13 @@ llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) 
 }
 
 void CodeGenerator::declareExternLangFunctions() {
-    std::vector<llvm::Type *> argTypes;
     voidpTy = llvm::PointerType::getUnqual(*context);
     auto *int32Ty = llvm::Type::getInt32Ty(*context);
     auto *voidp_intvoidp = llvm::FunctionType::get(voidpTy, {int32Ty, voidpTy}, false);
 
+    auto *void_ = llvm::FunctionType::get(builder->getVoidTy(), {}, false);
+    auto *voidp_1voidp = llvm::FunctionType::get(voidpTy,
+                                                 std::vector<llvm::Type *>(1, voidpTy), false);
     auto *voidp_2voidp = llvm::FunctionType::get(voidpTy,
                                                  std::vector<llvm::Type *>(2, voidpTy), false);
     auto *voidp_3voidp = llvm::FunctionType::get(voidpTy,
@@ -315,8 +337,10 @@ void CodeGenerator::declareExternLangFunctions() {
 
     functionDefMetaType = llvm::StructType::create(*context, "FunctionDefMeta");
     int8Ty = llvm::Type::getInt8Ty(*context);
-    functionDefMetaType->setBody(
-            std::vector<llvm::Type *>{voidpTy, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty}, true);
+    functionDefMetaType->setBody({voidpTy, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty, int8Ty}, true);
+
+    exceptionHandlerType = llvm::StructType::create(*context, "ExceptionHandler");
+    exceptionHandlerType->setBody({voidpTy, int32Ty}, true);
 
     langArrayAlloc = llvm::Function::Create(voidp_intvoidp, llvm::Function::ExternalLinkage,
                                             "_ZN9UltraRuby4Lang5Array11allocOnHeapEiPPNS0_6ObjectE", *module);
@@ -410,7 +434,7 @@ void CodeGenerator::declareExternLangFunctions() {
                                                *module);
 
     langObjectDefineInstanceMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_9MethodDefE",
+                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_15FunctionDefMetaE",
                                                             *module);
     langObjectDefineSingletonMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
                                                              "_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEiiPv",
@@ -424,10 +448,31 @@ void CodeGenerator::declareExternLangFunctions() {
     langModuleDefineModule = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
                                                     "_ZN9UltraRuby4Lang6Module12defineModuleEPNS0_6SymbolEPPS1_S4_PFPNS0_6ObjectES4_E",
                                                     *module);
+    langSymbolGet = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
+                                           "_ZN9UltraRuby4Lang6Symbol3getEPKc", *module);
+    langStringGet = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
+                                           "_ZN9UltraRuby4Lang6String3getEPKc", *module);
 
-    nilConst = codegenPointer(Lang::PrimaryConstants::nilConst);
-    trueConst = codegenPointer(Lang::PrimaryConstants::trueConst);
-    falseConst = codegenPointer(Lang::PrimaryConstants::falseConst);
+    cxaBeginCatch = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
+                                           "__cxa_begin_catch",
+                                           *module);
+    cxaEndCatch = llvm::Function::Create(void_, llvm::Function::ExternalLinkage,
+                                         "__cxa_end_catch",
+                                         *module);
+    cxaGetExceptionPtr = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
+                                                "__cxa_get_exception_ptr",
+                                                *module);
+    gxxPersonalityV0 = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage,
+                                                llvm::ConstantPointerNull::get(voidpTy), "__gxx_personality_v0");
+    exceptionTypeInfo = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                                 "_ZTIN9UltraRuby4Lang9ExceptionE");
+
+    nilConst = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                        "_ZN9UltraRuby4Lang16PrimaryConstants8nilConstE");
+    trueConst = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                         "_ZN9UltraRuby4Lang16PrimaryConstants9trueConstE");
+    falseConst = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                          "_ZN9UltraRuby4Lang16PrimaryConstants10falseConstE");
 }
 
 void CodeGenerator::debugPrintModuleIR() {
@@ -439,7 +484,9 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
     auto argsEnd = func->arg_end();
 
     auto selfArg = argsBegin;
-    scope->addVariable("self", selfArg);
+    auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_alloca");
+    builder->CreateStore(selfArg, selfAlloca);
+    scope->addVariable("self", selfAlloca);
     selfArg->setName("self");
 
     argsBegin++;
@@ -448,7 +495,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
         auto *blockArg = argsEnd;
         blockArg->setName("blockArg");
         auto *blockAlloca = builder->CreateAlloca(voidpTy, nullptr,
-                                                  functionDef->getBlockArg()->getName() + "_varAllocaPtr");
+                                                  functionDef->getBlockArg()->getName() + "_alloca");
         builder->CreateStore(blockArg, blockAlloca);
         scope->addVariable(functionDef->getBlockArg()->getName(), blockAlloca);
     }
@@ -466,7 +513,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
         switch (arg->getType()) {
             case AST::FuncDefArg::AST_ARG_TYPE_NORMAL: {
                 auto *funcArgValue = argsBegin;
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");
                 funcArgValue->setName(arg->getName() + "_arg");
                 if (arg->getDefaultValue() == nullptr) {
                     builder->CreateStore(funcArgValue, argAlloca);
@@ -496,7 +543,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
             }
             case AST::FuncDefArg::AST_ARG_TYPE_VARIADIC: {
                 auto *funcArgValue = argsBegin;
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");
                 funcArgValue->setName(arg->getName() + "VariadicArg");
                 builder->CreateStore(funcArgValue, argAlloca);
                 scope->addVariable(arg->getName(), argAlloca);
@@ -531,7 +578,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
                 auto *phi = builder->CreatePHI(voidpTy, 2, "arg_" + arg->getName() + "_phi");
                 phi->addIncoming(externalVal, trueBranch);
                 phi->addIncoming(defaultVal, falseBranch);
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_varAllocaPtr");;
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");;
                 builder->CreateStore(phi, argAlloca);
                 scope->addVariable(arg->getName(), argAlloca);
                 break;
@@ -551,30 +598,34 @@ void CodeGenerator::setTarget(llvm::TargetMachine *machine, std::string triple) 
 }
 
 void CodeGenerator::runPass(llvm::legacy::PassManager &manager) {
+    codegenInitializer();
     manager.run(*module);
 }
 
-llvm::Constant *CodeGenerator::codegenBoolConst(bool val) {
+llvm::LoadInst *CodeGenerator::codegenBoolConst(bool val) {
     if (val) {
-        return trueConst;
+        return builder->CreateLoad(voidpTy, trueConst);
     } else {
-        return falseConst;
+        return builder->CreateLoad(voidpTy, falseConst);
     }
 }
 
 llvm::Value *CodeGenerator::codegenBlock(AST::Block *block) {
-    llvm::Value *retVal = nilConst;
+    llvm::Value *retVal = nullptr;
     for (const auto &stmt: block->getList()) {
         retVal = codegenStatement(stmt);
+        if (retVal == nullptr) {
+            return nullptr;
+        }
+    }
+    if (retVal == nullptr) {
+        retVal = builder->CreateLoad(voidpTy, nilConst);
     }
     return retVal;
 }
 
 llvm::Value *CodeGenerator::codegenVariable(AST::Variable *variable) {
     auto *varPtr = scope->getVariable(variable->getName());
-    if (variable->getName() == "self") {
-        return varPtr;
-    }
     return builder->CreateLoad(voidpTy, varPtr, variable->getName());
 }
 
@@ -620,7 +671,7 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
     if (ifAst->getTrueBranch() != nullptr) {
         trueBranchRetVal = codegenStatement(ifAst->getTrueBranch());
     } else {
-        trueBranchRetVal = nilConst;
+        trueBranchRetVal = builder->CreateLoad(voidpTy, nilConst);
     }
     trueBranch = builder->GetInsertBlock();
     builder->CreateBr(merge);
@@ -629,7 +680,7 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
     if (ifAst->getFalseBranch() != nullptr) {
         falseBranchRetVal = codegenStatement(ifAst->getFalseBranch());
     } else {
-        falseBranchRetVal = nilConst;
+        falseBranchRetVal = builder->CreateLoad(voidpTy, nilConst);
     }
     falseBranch = builder->GetInsertBlock();
     builder->CreateBr(merge);
@@ -643,8 +694,8 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
 
 llvm::Value *CodeGenerator::codegenCastToBoolInt1(llvm::Value *ptr) {
     // ptr != nil & ptr != false -> true
-    auto *nilCheck = builder->CreateICmpNE(ptr, nilConst, "nilCheck");
-    auto *boolType = builder->CreateICmpNE(ptr, falseConst, "falseCheck");
+    auto *nilCheck = builder->CreateICmpNE(ptr, builder->CreateLoad(voidpTy, nilConst), "nilCheck");
+    auto *boolType = builder->CreateICmpNE(ptr, builder->CreateLoad(voidpTy, falseConst), "falseCheck");
     auto *orVal = builder->CreateAnd(nilCheck, boolType);
     return orVal;
 }
@@ -661,6 +712,13 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
 }
 
 llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args) {
+    auto *rescueBlock = scope->getRescueBlock();
+    if (rescueBlock != nullptr) {
+        auto *normDest = llvm::BasicBlock::Create(*context, "", builder->GetInsertBlock()->getParent(), rescueBlock);
+        auto *rv = builder->CreateInvoke(langFunction, normDest, rescueBlock, args);
+        builder->SetInsertPoint(normDest);
+        return rv;
+    }
     return builder->CreateCall(langFunction, args);
 }
 
@@ -701,8 +759,8 @@ llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
                                                  builder->getInt8(meta.getDirectArgsNum()),
                                                  builder->getInt8(meta.getFlags()),
                                          });
-    auto *var = new llvm::GlobalVariable(*module, functionDefMetaType, false, llvm::GlobalValue::ExternalLinkage, cs,
-                                         "functionDefMeta_:" + func->getName());
+    auto *var = new llvm::GlobalVariable(*module, functionDefMetaType, false, llvm::GlobalValue::PrivateLinkage, cs,
+                                         "functionDefMeta:" + func->getName());
     std::vector<llvm::Value *> args{self, codegenSymbol(&sym), var};
     if (functionDef->getSingleton() != nullptr) {
         return codegenLangCall(langObjectDefineSingletonMethod, args);
@@ -727,7 +785,7 @@ llvm::Value *CodeGenerator::codegenWhile(AST::While *whileAst) {
 
     builder->SetInsertPoint(condCheck);
     auto *phi = builder->CreatePHI(voidpTy, 2);
-    phi->addIncoming(nilConst, curBlock);
+    phi->addIncoming(builder->CreateLoad(voidpTy, nilConst), curBlock);
     phi->addIncoming(retVal, bodyEnd);
     auto *cond = codegenStatement(whileAst->getCondition());
     auto *boolVal = codegenCastToBoolInt1(cond);
@@ -798,7 +856,114 @@ llvm::Value *CodeGenerator::codegenCase(AST::Case *caseAst) {
 }
 
 llvm::Value *CodeGenerator::codegenExceptionalBlock(AST::ExceptionalBlock *exceptionalBlock) {
-    return nullptr;
+    auto *func = builder->GetInsertBlock()->getParent();
+    func->setPersonalityFn(gxxPersonalityV0);
+
+    auto *rescuesBlock = llvm::BasicBlock::Create(*context, "rescue", func);
+    auto *ensure = llvm::BasicBlock::Create(*context, "ensure", func);
+    auto *rethrow = llvm::BasicBlock::Create(*context, "rethrow", func);
+
+    scope->pushHandlerBlock(rescuesBlock);
+    auto *mainRetVal = codegenStatement(exceptionalBlock->getMainBlock());
+    auto *mainRetBlock = builder->GetInsertBlock();
+    builder->CreateBr(ensure);
+    scope->popHandlerBlock();
+
+    builder->SetInsertPoint(ensure);
+    auto *exceptionalBlockRetVal = builder->CreatePHI(voidpTy, 2 + exceptionalBlock->getRescues().size());
+    auto *needRethrowFlag = builder->CreatePHI(builder->getInt1Ty(), 2 + exceptionalBlock->getRescues().size());
+    exceptionalBlockRetVal->addIncoming(mainRetVal, mainRetBlock);
+    needRethrowFlag->addIncoming(builder->getInt1(false), mainRetBlock);
+    if (exceptionalBlock->getEnsureBlock()) {
+        codegenStatement(exceptionalBlock->getEnsureBlock());
+    }
+    auto *finish = llvm::BasicBlock::Create(*context, "exceptionBlockFinish", func);
+    builder->CreateCondBr(needRethrowFlag, rethrow, finish);
+
+    builder->SetInsertPoint(rescuesBlock);
+    auto *token = builder->CreateLandingPad(exceptionHandlerType, 1, "exceptionTok");
+    token->addClause(exceptionTypeInfo);
+
+
+    auto *exceptionTypeId = builder->CreateExtractValue(token, {1}, "exceptionTypeID");
+    auto *expectedTypeId = builder->CreateIntrinsic(builder->getInt32Ty(), llvm::Intrinsic::eh_typeid_for,
+                                                    exceptionTypeInfo);
+    auto *matchedTypeId = builder->CreateICmpUGT(exceptionTypeId, exceptionTypeId, "matchedTypeId");
+
+    llvm::BasicBlock *handler = llvm::BasicBlock::Create(*context, "handler", func, finish);
+    builder->CreateCondBr(matchedTypeId, handler, rethrow);
+
+    builder->SetInsertPoint(rethrow);
+    builder->CreateResume(token);
+
+    builder->SetInsertPoint(handler);
+    bool hasFallbackCatch = false;
+    if (!exceptionalBlock->getRescues().empty()) {
+        auto *abstExceptionPtr = builder->CreateExtractValue(token, {0}, "abstExceptionPtr");
+        auto* adjExceptionPtr = codegenLangCall(cxaGetExceptionPtr, {abstExceptionPtr});
+        auto *exceptionPtr = builder->CreateGEP(llvm::ArrayType::get(voidpTy, 2), adjExceptionPtr,
+                                                {builder->getInt32(0),
+                                                 builder->getInt32(sizeof(std::exception) / sizeof(void *))},
+                                                "adjExceptionPtr");
+        static_assert(sizeof(std::exception) % sizeof(void *) == 0);
+        auto *exception = builder->CreateLoad(voidpTy, exceptionPtr, "exceptionObject");
+        auto *exceptionClass = codegenGetObjectClass(exception);
+        auto &rescues = exceptionalBlock->getRescues();
+        for (const auto rescue: rescues) {
+            if (rescue->rescueClass != nullptr) {
+                auto *rescueClassObject = codegenStatement(rescue->rescueClass);
+                auto *rescueClass = codegenGetObjectClass(rescueClassObject);
+
+                auto *isAClass = builder->CreateICmpEQ(rescueClass, codegenPointer(Lang::BasicClasses::ClassClass));
+                auto *isAModule = builder->CreateICmpEQ(rescueClass, codegenPointer(Lang::BasicClasses::ModuleClass));
+                auto *isValidRescueType = builder->CreateOr(isAClass, isAModule);
+                auto *invalidExceptionBlock = llvm::BasicBlock::Create(*context, "invalidExceptionBlock", func, finish);
+                auto *validExceptionBlock = llvm::BasicBlock::Create(*context, "validExceptionBlock", func, finish);
+                builder->CreateCondBr(isValidRescueType, validExceptionBlock, invalidExceptionBlock);
+
+                builder->SetInsertPoint(invalidExceptionBlock);
+                // todo raise "class or module required for rescue clause (TypeError)"
+                builder->CreateUnreachable();
+
+                builder->SetInsertPoint(validExceptionBlock);
+                AST::Symbol comparator("<=");
+                auto *compRes = codegenLangCall(langObjectCall[1],
+                                                {rescueClass, codegenSymbol(&comparator), exceptionClass});
+                auto *clauseMatches = codegenCastToBoolInt1(compRes);
+                auto *clause = llvm::BasicBlock::Create(*context, "clause", func, finish);
+                handler = llvm::BasicBlock::Create(*context, "handler", func, finish);
+                builder->CreateCondBr(clauseMatches, clause, handler);
+
+                builder->SetInsertPoint(clause);
+            } else {
+                hasFallbackCatch = true;
+            }
+            if (!rescue->varName.empty()) {
+                auto *exceptionVarAloca = builder->CreateAlloca(voidpTy);
+                builder->CreateStore(exception, exceptionVarAloca);
+                scope->addVariable(rescue->varName, exceptionVarAloca);
+            }
+
+            codegenLangCall(cxaBeginCatch, {abstExceptionPtr});
+            auto *clauseRetVal = codegenStatement(rescue->handler);
+            codegenLangCall(cxaEndCatch, {});
+
+            exceptionalBlockRetVal->addIncoming(clauseRetVal, builder->GetInsertBlock());
+            needRethrowFlag->addIncoming(builder->getInt1(false), builder->GetInsertBlock());
+            builder->CreateBr(ensure);
+            builder->SetInsertPoint(handler);
+        }
+    } else {
+
+    }
+    if (!hasFallbackCatch) {
+        exceptionalBlockRetVal->addIncoming(codegenPointer(nullptr), handler);
+        needRethrowFlag->addIncoming(builder->getInt1(true), handler);
+        builder->CreateBr(ensure);
+    }
+
+    builder->SetInsertPoint(finish);
+    return exceptionalBlockRetVal;
 }
 
 llvm::Value *CodeGenerator::codegenNext(AST::Next *next) {
@@ -816,7 +981,7 @@ llvm::Value *CodeGenerator::codegenRetry() {
 llvm::Value *CodeGenerator::codegenReturn(AST::Return *returnAst) {
     auto &callArgs = returnAst->getCallArgs()->getArgs();
     if (callArgs.empty()) {
-        builder->CreateRet(nilConst);
+        builder->CreateRet(builder->CreateLoad(voidpTy, nilConst));
     } else if (callArgs.size() == 1) {
         builder->CreateRet(codegenStatement(callArgs[0]));
     } else {
@@ -844,6 +1009,37 @@ llvm::Function *CodeGenerator::codegenFunction(AST::FunctionDef *functionDef) {
         builder->SetInsertPoint(block, iter);
     }
     return retVal;
+}
+
+llvm::Value *CodeGenerator::codegenGetObjectClass(llvm::Value *object) {
+    auto *objectClassPtr = builder->CreateGEP(llvm::ArrayType::get(voidpTy, 2), object,
+                                              {builder->getInt32(0),
+                                               builder->getInt32(Lang::Object::ObjectClassOffset / sizeof(void *))});
+    static_assert(Lang::Object::ObjectClassOffset % sizeof(void *) == 0);
+    auto *objectClass = builder->CreateLoad(voidpTy, objectClassPtr);
+    return objectClass;
+}
+
+bool CodeGenerator::codegenInitializer() {
+    auto *func = module->getFunction("__init__");
+    if (func != nullptr) {
+        logError("redefine symbol init function");
+        return false;
+    }
+    auto *ft = llvm::FunctionType::get(voidpTy, {}, false);
+    func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__init__", *module);
+    auto *entry = llvm::BasicBlock::Create(*context, "", func);
+    builder->SetInsertPoint(entry);
+    for (const auto &sym: syms) {
+        auto *symVal = builder->CreateCall(langSymbolGet, {builder->CreateGlobalString(sym.first)});
+        builder->CreateStore(symVal, sym.second);
+    }
+    for (const auto &str: strs) {
+        auto *symVal = builder->CreateCall(langStringGet, {builder->CreateGlobalString(str.first)});
+        builder->CreateStore(symVal, str.second);
+    }
+    builder->CreateRetVoid();
+    return true;
 }
 }
 }

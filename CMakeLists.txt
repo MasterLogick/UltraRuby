@@ -2,13 +2,16 @@ cmake_minimum_required(VERSION 3.26)
 project(ultra_ruby)
 
 find_package(LLVM REQUIRED CONFIG)
-include_directories(${LLVM_INCLUDE_DIRS})
+get_filename_component(LLD_DIR "${LLVM_LIBRARY_DIR}/cmake/lld" ABSOLUTE)
+find_package(LLD REQUIRED HINTS ${LLD_DIR})
+
+include_directories(${LLVM_INCLUDE_DIRS} ${LLD_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(UltraRuby src/lexer/Lexer.cpp
+add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lexer/Lexer.h
         src/lexer/TokenType.h
         src/lexer/LexerInput.h
@@ -88,20 +91,20 @@ add_library(UltraRuby src/lexer/Lexer.cpp
         src/lang/PrimaryConstants.cpp
         src/lang/PrimaryConstants.h
         src/ast/CaseWhereBlock.h
-        src/loader/ObjectArea.cpp
-        src/loader/ObjectArea.h
         src/loader/EmittedObject.cpp
         src/loader/EmittedObject.h
-        src/loader/MemoryArea.cpp
-        src/loader/MemoryArea.h
         src/lang/FunctionDefMeta.cpp
         src/lang/FunctionDefMeta.h
         src/lang/Proc.cpp
         src/lang/Proc.h
+        src/lang/Exception.cpp
+        src/lang/Exception.h
+        src/ast/Rescue.h
 )
 
-llvm_map_components_to_libnames(llvm_libs core orcjit native)
-target_link_libraries(UltraRuby ${llvm_libs})
+target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)
 
 add_executable(uruby src/main.cpp)
 target_link_libraries(uruby PUBLIC UltraRuby)
+
+add_executable(test src/test.cpp)

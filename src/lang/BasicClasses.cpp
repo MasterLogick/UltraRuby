@@ -10,6 +10,7 @@ namespace Lang {
 Class *BasicClasses::BasicObjectClass = nullptr;
 Class *BasicClasses::ObjectClass = nullptr;
 Class *BasicClasses::ClassClass = nullptr;
+Class *BasicClasses::ModuleClass = nullptr;
 Class *BasicClasses::StringClass = nullptr;
 Class *BasicClasses::SymbolClass = nullptr;
 Class *BasicClasses::NilClass = nullptr;
@@ -22,6 +23,7 @@ void BasicClasses::init() {
     BasicObjectClass = new Class(nullptr, "BasicClass", sizeof(Object));
     ObjectClass = new Class(BasicObjectClass, "Object", sizeof(Object));
     ClassClass = new Class(ObjectClass, "Class", sizeof(Class));
+    ModuleClass = new Class(ObjectClass, "Module", sizeof(Class));
     StringClass = new Class(ObjectClass, "String", sizeof(String));
     SymbolClass = new Class(ObjectClass, "Symbol", sizeof(Symbol));
     NilClass = new Class(ObjectClass, "NilClass", sizeof(Object));

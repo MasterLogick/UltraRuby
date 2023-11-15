@@ -59,5 +59,18 @@ Scope::Scope(Scope *outer) {
 Scope::Scope() {
     outer = this;
 }
+
+void Scope::pushHandlerBlock(llvm::BasicBlock *pBlock) {
+    deque.push_back(pBlock);
+}
+
+void Scope::popHandlerBlock() {
+    deque.pop_back();
+}
+
+llvm::BasicBlock *Scope::getRescueBlock() {
+    if (deque.empty())return nullptr;
+    return deque.back();
+}
 } // UltraRuby
 } // IR

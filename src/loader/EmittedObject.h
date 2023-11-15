@@ -10,12 +10,11 @@ namespace Loader {
 class EmittedObject {
 public:
     explicit EmittedObject(IR::CodeGenerator &codeGenerator);
+    ~EmittedObject();
 
-    llvm::Expected<std::unique_ptr<llvm::object::ObjectFile>> createELFObject();
-
+    char name[7];
 private:
-    size_t len;
-    char *data;
+    int fd;
 };
 
 } // UltraRuby
