@@ -51,6 +51,22 @@ public:
 
     llvm::BasicBlock *getRescueBlock();
 
+    std::string getFullClassIdentifier(AST::ClassDef *classDef);
+
+    std::string getFullModuleIdentifier(AST::ModuleDef *pDef);
+
+    std::string getFullFunctionIdentifier(AST::FunctionDef *pDef);
+
+    void enterClassDef(AST::ClassDef *classDef);
+
+    void leaveClassDef();
+
+    void enterModuleDef(AST::ModuleDef *moduleDef);
+
+    void leaveModuleDef();
+
+    std::string getNearestClassIdentifier();
+
 private:
     Scope(Scope *outer);
 

@@ -12,27 +12,34 @@ namespace AST {
 
 class ClassDef : public Statement {
 public:
-    ClassDef(std::string classIdentifier, std::string superclassIdentifier, AST::Block *definition) :
+    ClassDef(std::string className, std::string outerModule, std::string superclassIdentifier,
+             AST::Block *definition) :
             Statement(STMT_CLASS_DEF),
-            classIdentifier(std::move(classIdentifier)),
-            superclassIdentifier(std::move(superclassIdentifier)),
+            className(std::move(className)),
+            outerModule(std::move(outerModule)),
+            superclass(std::move(superclassIdentifier)),
             definition(definition) {}
 
-    inline const std::string &getClassIdentifier() const {
-        return classIdentifier;
+    const std::string &getClassName() const {
+        return className;
     }
 
-    inline const std::string &getSuperclassIdentifier() const {
-        return superclassIdentifier;
+    const std::string &getOuterModule() const {
+        return outerModule;
     }
 
-    inline AST::Block *getDefinition() const {
+    const std::string &getSuperclass() const {
+        return superclass;
+    }
+
+    AST::Block *getDefinition() const {
         return definition;
     }
 
 private:
-    std::string classIdentifier;
-    std::string superclassIdentifier;
+    std::string className;
+    std::string outerModule;
+    std::string superclass;
     AST::Block *definition;
 };
 

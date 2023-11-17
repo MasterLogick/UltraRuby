@@ -23,7 +23,7 @@ class Object {
 public:
     static constexpr int ObjectClassOffset = 0;
 
-    Object(Class *objectClass) : objectClass(objectClass) {}
+    explicit Object(Class *objectClass) : objectClass(objectClass) {}
 
     static constexpr int MaxDirectArgsLen = 5;
 
@@ -53,6 +53,12 @@ public:
     Symbol *defineSingletonMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
 
     Object *defineClassInstance(Object *(*)(Object *));
+
+    Object *defineClass(Symbol *nameSymbol, Class *parent, Object *(*definition)(Class *));
+
+    Object *defineModule(Symbol *nameSymbol, Object *(*definition)(Class *));
+
+    Object *getConst(Symbol *nameSymbol);
 
     Class *getObjectClass() const {
         return objectClass;

@@ -12,8 +12,6 @@ class Class : public Object {
 public:
     Class(Class *parent, const std::string &name, int size);
 
-    static Object *defineClass(Symbol *nameSymbol, Class **classPtr, Class *parent, Object *(*definition)(Class *));
-
     HashInternal &getConsts() {
         return consts;
     }

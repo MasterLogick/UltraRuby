@@ -72,5 +72,37 @@ llvm::BasicBlock *Scope::getRescueBlock() {
     if (deque.empty())return nullptr;
     return deque.back();
 }
+
+std::string Scope::getFullClassIdentifier(AST::ClassDef *classDef) {
+    return std::string();
+}
+
+std::string Scope::getFullModuleIdentifier(AST::ModuleDef *pDef) {
+    return std::string();
+}
+
+std::string Scope::getFullFunctionIdentifier(AST::FunctionDef *pDef) {
+    return std::string();
+}
+
+void Scope::enterClassDef(AST::ClassDef *classDef) {
+
+}
+
+void Scope::leaveClassDef() {
+
+}
+
+void Scope::leaveModuleDef() {
+
+}
+
+void Scope::enterModuleDef(AST::ModuleDef *moduleDef) {
+
+}
+
+std::string Scope::getNearestClassIdentifier() {
+    return std::string();
+}
 } // UltraRuby
 } // IR

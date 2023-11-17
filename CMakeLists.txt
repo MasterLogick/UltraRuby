@@ -106,5 +106,3 @@ target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)
 
 add_executable(uruby src/main.cpp)
 target_link_libraries(uruby PUBLIC UltraRuby)
-
-add_executable(test src/test.cpp)

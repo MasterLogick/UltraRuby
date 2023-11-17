@@ -6,6 +6,9 @@
 namespace UltraRuby {
 namespace Parser {
 
+//todo cleanup resources on failure
+
+
 AST::Block *Parser::parseProgram() {
     std::vector<AST::Statement *> list;
     while (currentLexerToken != Lexer::TOK_EOF) {
@@ -122,6 +125,7 @@ bool Parser::primaryTest() {
         case Lexer::TOK_DOUBLE_COLON:
         case Lexer::TOK_COLON:
         case Lexer::TOK_OP:
+        case Lexer::TOK_AT_SIGN:
             return true;
         default:
             return false;
@@ -468,9 +472,18 @@ AST::Statement *Parser::parsePrimaryObject() {
                 nextLexerToken();
                 return new AST::ClassInstanceDef(instance, definition);
             }
-            std::string classIdentifier;
-            if (!parseVariable(classIdentifier, true)) {
+            std::string className;
+            if (!parseVariable(className, true)) {
                 return nullptr;
+            }
+            std::string outerModule;
+            auto pos = className.find("::");
+            if (pos == 0) {
+                outerModule = "::";
+                className = className.substr(2);
+            } else if (pos != std::string::npos) {
+                outerModule = className.substr(0, pos);
+                className = className.substr(pos + 2);
             }
             std::string superclassIdentifier;
             if (currentLexerToken == Lexer::TOK_OP) {
@@ -484,17 +497,28 @@ AST::Statement *Parser::parsePrimaryObject() {
                 }
             }
             auto definition = parseCompStatement();
+            skipTerms();
             if (currentLexerToken != Lexer::TOK_END) {
                 logError("expected \"end\"");
                 return nullptr;
             }
-            return new AST::ClassDef(classIdentifier, superclassIdentifier, definition);
+            return new AST::ClassDef(std::move(className), std::move(outerModule),
+                                     std::move(superclassIdentifier), definition);
         }
         case Lexer::TOK_MODULE: {
             nextLexerToken(true);
-            std::string moduleIdentifier;
-            if (!parseVariable(moduleIdentifier, true)) {
+            std::string moduleName;
+            if (!parseVariable(moduleName, true)) {
                 return nullptr;
+            }
+            std::string outerModule;
+            auto pos = moduleName.find("::");
+            if (pos == 0) {
+                outerModule = "::";
+                moduleName = moduleName.substr(2);
+            } else if (pos != std::string::npos) {
+                outerModule = moduleName.substr(0, pos);
+                moduleName = moduleName.substr(pos + 2);
             }
             auto definition = parseCompStatement();
             if (definition == nullptr) {
@@ -505,81 +529,10 @@ AST::Statement *Parser::parsePrimaryObject() {
                 return nullptr;
             }
             nextLexerToken();
-            return new AST::ModuleDef(moduleIdentifier, definition);
+            return new AST::ModuleDef(std::move(moduleName), std::move(outerModule), definition);
         }
-        case Lexer::TOK_DEF: {
-            nextLexerToken();
-            skipTerms();
-            AST::Statement *singleton(nullptr);
-            std::string functionName;
-            if (currentLexerToken == Lexer::TOK_IDENTIFIER) {
-                //todo parse keyword variables
-                std::string label = queue->getStr();
-                nextLexerToken();
-                skipTerms();
-                if (currentLexerToken == Lexer::TOK_DOT) {
-                    nextLexerToken();
-                    skipTerms();
-                    if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                        logError("expected identifier");
-                        return nullptr;
-                    }
-                    functionName = queue->getStr();
-                    singleton = new AST::Variable(label);
-                } else {
-                    functionName = label;
-                }
-            } else if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
-                singleton = parseStatement();
-                if (singleton == nullptr) {
-                    return nullptr;
-                }
-                if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
-                    logError("expected \")\"");
-                    return nullptr;
-                }
-                nextLexerToken();
-                skipTerms();
-                if (currentLexerToken != Lexer::TOK_DOT) {
-                    logError("expected \".\"");
-                    return nullptr;
-                }
-                nextLexerToken();
-                skipTerms();
-                if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                    logError("expected identifier");
-                    return nullptr;
-                }
-                functionName = queue->getStr();
-            } else {
-                logError("expected identifier or \"(\"");
-                return nullptr;
-            }
-            skipSpaces();
-            bool hasParen = false;
-            if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
-                nextLexerToken();
-                hasParen = true;
-            }
-            std::vector<AST::FuncDefArg *> args;
-            if (!parseFuncDefArgs(args, hasParen)) {
-                return nullptr;
-            }
-            if (hasParen) {
-                if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
-                    logError("expected \")\"");
-                    return nullptr;
-                }
-                nextLexerToken();
-            }
-            auto body = parseCompStatement();
-            if (currentLexerToken != Lexer::TOK_END) {
-                logError("exepcted \"end\"");
-                return nullptr;
-            }
-            nextLexerToken();
-            return new AST::FunctionDef(functionName, args, singleton, body);
-        }
+        case Lexer::TOK_DEF:
+            return parseFunctionDef();
         case Lexer::TOK_OP: {
             auto op = convertToUnOp(queue->getOperation());
             if (op == AST::OP_UNKNOWN) {
@@ -617,6 +570,16 @@ AST::Statement *Parser::parsePrimaryObject() {
                 return new AST::Variable(label);
             }
         }
+        case Lexer::TOK_AT_SIGN: {
+            nextLexerToken();
+            if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
+                logError("expected identifier");
+                return nullptr;
+            }
+            auto *var = new AST::Variable("@" + queue->getStr());
+            nextLexerToken();
+            return var;
+        }
         default: {
             return nullptr;
         }
@@ -624,6 +587,7 @@ AST::Statement *Parser::parsePrimaryObject() {
 }
 
 void Parser::logError(const char *err) {
+    error = true;
     std::cerr << "Parser error: " << err << std::endl;
 }
 
@@ -1127,7 +1091,7 @@ const std::map<AST::OperationType, int> precedences = {
 
         {AST::BIN_OP_POWER,              25},
 
-        {AST::UN_OP_NEGATION,            23},
+        {AST::UN_OP_NEGATIVE,            23},
 
         {AST::BIN_OP_MULTIPLY,           21},
         {AST::BIN_OP_DIVIDE,             21},
@@ -1202,7 +1166,7 @@ AST::OperationType Parser::convertToUnOp(AST::OperationType type) {
     if (type == AST::LEX_OP_STAR) {
         return AST::UN_OP_LIST_UNWRAP;
     } else if (type == AST::LEX_OP_MINUS) {
-        return AST::UN_OP_NEGATION;
+        return AST::UN_OP_NEGATIVE;
     } else if (type == AST::LEX_OP_PLUS) {
         return AST::UN_OP_POSITIVE;
     } else if (type < AST::UN_OP_REGION_START || type > AST::UN_OP_REGION_END) {
@@ -1220,6 +1184,154 @@ Lexer::TokenType Parser::prevLexerToken() {
 Lexer::TokenType Parser::rewindTo(int ptr) {
     queue->setPtr(ptr - 1);
     return nextLexerToken();
+}
+
+std::string Parser::parseFunctionName() {
+    std::string name;
+    if (currentLexerToken == Lexer::TOK_IDENTIFIER) {
+        name = queue->getStr();
+        nextLexerToken();
+        if (currentLexerToken == Lexer::TOK_OP) {
+            switch (queue->getOperation()) {
+                case AST::BIN_OP_QUESTION: {
+                    nextLexerToken();
+                    return name + "?";
+                }
+                case AST::UN_OP_NOT: {
+                    nextLexerToken();
+                    return name + "!";
+                }
+                case AST::BIN_OP_ASSIGN: {
+                    nextLexerToken();
+                    return name + "=";
+                }
+            }
+        }
+        return name;
+    }
+    if (currentLexerToken == Lexer::TOK_AT_SIGN) {
+        nextLexerToken();
+        if (currentLexerToken != Lexer::TOK_OP) {
+            return "";
+        }
+        switch (queue->getOperation()) {
+            case AST::LEX_OP_PLUS: {
+                nextLexerToken();
+                return "@+";
+            }
+            case AST::LEX_OP_MINUS: {
+                nextLexerToken();
+                return "@-";
+            }
+        }
+        return "";
+    }
+    if (currentLexerToken == Lexer::TOK_OP) {
+        auto op = queue->getOperation();
+        nextLexerToken();
+        switch (op) {
+            case AST::BIN_OP_LESS:
+                return "<";
+            case AST::BIN_OP_LESS_EQUAL:
+                return "<=";
+            case AST::BIN_OP_EQUAL:
+                return "==";
+            case AST::BIN_OP_CASE_EQUAL:
+                return "===";
+            case AST::BIN_OP_GREATER_EQUAL:
+                return ">=";
+            case AST::BIN_OP_GREATER:
+                return ">";
+            case AST::BIN_OP_THREE_WAY_COMPARE:
+                return "<=>";
+            case AST::BIN_OP_BIN_OR:
+                return "|";
+            case AST::BIN_OP_OR:
+                return "||";
+            case AST::BIN_OP_BIN_AND:
+                return "&";
+            case AST::BIN_OP_XOR:
+                return "^";
+            case AST::BIN_OP_LEFT_SHIFT:
+                return "<<";
+            case AST::BIN_OP_RIGHT_SHIFT:
+                return ">>";
+            case AST::BIN_OP_DIVIDE:
+                return "/";
+            case AST::BIN_OP_MOD:
+                return "%";
+            case AST::BIN_OP_POWER:
+                return "**";
+            case AST::UN_OP_NOT:
+                return "!";
+            case AST::UN_OP_BIN_NEGATION:
+                return "~";
+            case AST::LEX_OP_PLUS:
+                return "+";
+            case AST::LEX_OP_MINUS:
+                return "-";
+            case AST::LEX_OP_STAR:
+                return "*";
+        }
+    }
+    return "";
+}
+
+AST::Statement *Parser::parseFunctionDef() {
+    nextLexerToken();
+    skipTerms();
+    AST::Statement *singleton(nullptr);
+    std::string functionName;
+    if (!parseFunctionDefHeader(&functionName, &singleton)) {
+        return nullptr;
+    }
+    skipSpaces();
+    bool hasParen = false;
+    if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
+        nextLexerToken();
+        hasParen = true;
+    }
+    std::vector<AST::FuncDefArg *> args;
+    if (!parseFuncDefArgs(args, hasParen)) {
+        return nullptr;
+    }
+    if (hasParen) {
+        if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
+            logError("expected \")\"");
+            return nullptr;
+        }
+        nextLexerToken();
+    }
+    auto body = parseCompStatement();
+    if (currentLexerToken != Lexer::TOK_END) {
+        logError("exepcted \"end\"");
+        return nullptr;
+    }
+    nextLexerToken();
+    return new AST::FunctionDef(functionName, args, singleton, body);
+}
+
+bool Parser::parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton) {
+    int ptr = queue->getPtr();
+    *singleton = parseStatement();
+    if (singleton == nullptr) {
+        rewindTo(ptr);
+        *functionName = parseFunctionName();
+        return !functionName->empty();
+    }
+    skipTerms();
+    if (currentLexerToken != Lexer::TOK_DOT) {
+        delete *singleton;
+        *singleton = nullptr;
+        rewindTo(ptr);
+        *functionName = parseFunctionName();
+        return !functionName->empty();
+    }
+    nextLexerToken();
+    skipTerms();
+
+    *functionName = parseFunctionName();
+    return !functionName->empty();
 }
 } // UltraRuby
 } // Parser

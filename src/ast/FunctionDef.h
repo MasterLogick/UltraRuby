@@ -28,7 +28,7 @@ public:
         return singleton;
     }
 
-    inline Statement *getBody() const {
+    inline Block *getBody() const {
         return body;
     }
 

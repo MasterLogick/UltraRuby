@@ -11,7 +11,7 @@ namespace Parser {
 
 class Parser {
 public:
-    explicit Parser(Lexer::TokenQueue *queue) : queue(queue) {
+    explicit Parser(Lexer::TokenQueue *queue) : queue(queue), error(false) {
         currentLexerToken = queue->getNextToken();
     }
 
@@ -21,6 +21,10 @@ public:
      * @return
      */
     AST::Block *parseProgram();
+
+    bool hasErrors() {
+        return error;
+    }
 
 private:
     /**
@@ -143,7 +147,7 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    std::pair<AST::CallArgs *,bool> parseCallArgs();
+    std::pair<AST::CallArgs *, bool> parseCallArgs();
 
     /**
      * block ::= { block_body }
@@ -200,6 +204,13 @@ private:
 
     Lexer::TokenQueue *queue;
     Lexer::TokenType currentLexerToken;
+    bool error;
+
+    std::string parseFunctionName();
+
+    AST::Statement *parseFunctionDef();
+
+    bool parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton);
 };
 
 } // UltraRuby

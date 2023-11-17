@@ -47,7 +47,7 @@ enum OperationType {
 
     UN_OP_NOT,
     UN_OP_POSITIVE,
-    UN_OP_NEGATION,
+    UN_OP_NEGATIVE,
     UN_OP_BIN_NEGATION,
     UN_OP_LIST_UNWRAP,
 

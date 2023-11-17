@@ -18,7 +18,7 @@ using namespace UltraRuby;
 
 Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
     std::cout << self << " " << arg << std::endl;
-    return Lang::PrimaryConstants::nilConst;
+    return &Lang::PrimaryConstants::NilConst;
 }
 
 Lang::Object *Uraise(Lang::Object *self, Lang::Object *arg) {
@@ -29,23 +29,32 @@ int main() {
     Lang::BasicClasses::init();
     Lang::PrimaryConstants::init();
 
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmParser();
+    llvm::InitializeNativeTargetAsmPrinter();
+
     auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
-begin
-  raise "test"
-rescue => b
-  puts b
+# frozen_string_literal: true
+class C
+  def a=(b)
+    b
+  end
+
+  def a
+    3
+  end
 end
+
 )");
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);
     auto parser = std::make_shared<Parser::Parser>(lexer->getQueue());
     auto block = parser->parseProgram();
+    if (parser->hasErrors()) {
+        return -1;
+    }
     IR::CodeGenerator codeGenerator;
     auto topLevel = new AST::FunctionDef("top_required", std::vector<AST::FuncDefArg *>(), nullptr, block);
     codeGenerator.codegenProgram(topLevel);
-
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmParser();
-    llvm::InitializeNativeTargetAsmPrinter();
 
     Loader::EmittedObject eObj(codeGenerator);
     codeGenerator.debugPrintModuleIR();

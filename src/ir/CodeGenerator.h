@@ -32,13 +32,15 @@ public:
     void runPass(llvm::legacy::PassManager &manager);
 
 private:
+    //================= Lang functions codegen start =================
+
     llvm::Value *codegenArray(AST::Array *array);
 
     llvm::Value *codegenBinaryOperation(AST::BinaryOperation *binOp);
 
     llvm::Value *codegenBlock(AST::Block *block);
 
-    llvm::LoadInst *codegenBoolConst(bool val);
+    llvm::Constant * codegenBoolConst(bool val);
 
     llvm::Value *codegenBreak(AST::Break *breakAst);
 
@@ -90,12 +92,11 @@ private:
 
     llvm::Value *codegenYieldSelf();
 
+    //================= Lang functions codegen end =================
 
     llvm::Value *codegenCastToBoolInt1(llvm::Value *ptr);
 
-    llvm::Function *codegenFunctionBody(AST::FunctionDef *functionDef);
-
-    llvm::Function *codegenFunction(AST::FunctionDef *functionDef);
+    llvm::Function *codegenFunctionInternal(AST::FunctionDef *functionDef);
 
     llvm::Value *codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args);
 
@@ -129,6 +130,7 @@ private:
     llvm::Constant *nilConst;
     llvm::Constant *trueConst;
     llvm::Constant *falseConst;
+    llvm::Constant *globalScope;
 
     llvm::Function *langArrayAlloc;
     llvm::Function *langHashAlloc;
@@ -143,16 +145,20 @@ private:
     llvm::Function *langObjectDefineInstanceMethod;
     llvm::Function *langObjectDefineSingletonMethod;
     llvm::Function *langObjectDefineClassInstance;
-    llvm::Function *langClassDefineClass;
-    llvm::Function *langModuleDefineModule;
+    llvm::Function *langObjectDefineClass;
+    llvm::Function *langObjectDefineModule;
+    llvm::Function *langObjectGetConst;
     llvm::Function *langSymbolGet;
-    llvm::Function *langStringGet;
 
+    llvm::Function *langStringGet;
     llvm::Function *cxaBeginCatch;
     llvm::Function *cxaEndCatch;
     llvm::Constant *gxxPersonalityV0;
     llvm::Function *cxaGetExceptionPtr;
+
     llvm::Constant *exceptionTypeInfo;
+
+    llvm::Value *codegenSelf();
 };
 
 } // UltraRuby

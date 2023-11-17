@@ -11,19 +11,25 @@ namespace AST {
 
 class ModuleDef : public Statement {
 public:
-    ModuleDef(std::string moduleIdentifier, AST::Block *definition)
-            : Statement(STMT_MODULE_DEF), moduleIdentifier(std::move(moduleIdentifier)), definition(definition) {}
+    ModuleDef(std::string moduleName, std::string outerModule, AST::Block *definition)
+            : Statement(STMT_MODULE_DEF), moduleName(std::move(moduleName)),
+              outerModule(std::move(outerModule)), definition(definition) {}
 
-    inline const std::string &getModuleIdentifier() const {
-        return moduleIdentifier;
+    const std::string &getModuleName() const {
+        return moduleName;
     }
 
-    inline AST::Block *getDefinition() const {
+    const std::string &getOuterModule() const {
+        return outerModule;
+    }
+
+    AST::Block *getDefinition() const {
         return definition;
     }
 
 private:
-    std::string moduleIdentifier;
+    std::string moduleName;
+    std::string outerModule;
     AST::Block *definition;
 };
 

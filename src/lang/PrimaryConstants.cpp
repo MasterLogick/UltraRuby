@@ -4,14 +4,21 @@
 
 namespace UltraRuby {
 namespace Lang {
-Object *PrimaryConstants::nilConst = nullptr;
-Object *PrimaryConstants::trueConst = nullptr;
-Object *PrimaryConstants::falseConst = nullptr;
+Object PrimaryConstants::NilConst(nullptr);
+Object PrimaryConstants::TrueConst(nullptr);
+Object PrimaryConstants::FalseConst(nullptr);
+Object PrimaryConstants::GlobalScope(nullptr);
 
 void PrimaryConstants::init() {
-    nilConst = new Object(BasicClasses::NilClass);
-    trueConst = new Object(BasicClasses::TrueClass);
-    falseConst = new Object(BasicClasses::FalseClass);
+    // well ...
+    NilConst.~Object();
+    TrueConst.~Object();
+    FalseConst.~Object();
+    GlobalScope.~Object();
+    new (&NilConst) Object(BasicClasses::NilClass);
+    new (&TrueConst) Object(BasicClasses::TrueClass);
+    new (&FalseConst) Object(BasicClasses::FalseClass);
+    new (&GlobalScope) Object(BasicClasses::ObjectClass);
 }
 } // UltraRuby
 } // Lang

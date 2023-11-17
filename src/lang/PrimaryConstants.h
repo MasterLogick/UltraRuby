@@ -8,10 +8,10 @@ namespace Lang {
 
 class PrimaryConstants {
 public:
-    static Object *nilConst;
-    static Object *trueConst;
-    static Object *falseConst;
-
+    static Object NilConst;
+    static Object TrueConst;
+    static Object FalseConst;
+    static Object GlobalScope;
     static void init();
 
 };

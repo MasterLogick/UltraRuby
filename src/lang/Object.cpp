@@ -179,7 +179,7 @@ Object *Object::call(Symbol *name, Args ...oArgs) {
                 args[variadicStart] = Array::allocOnHeap(0, nullptr);
             }
         }
-        CallEnding(nullptr, PrimaryConstants::nilConst, args)
+        CallEnding(nullptr, &PrimaryConstants::NilConst, args)
     } else {
         Object *sargs[CallNumArgs] = {oArgs...};
         return callV(name, CallNumArgs, sargs);
@@ -314,7 +314,7 @@ Object *Object::callN(Symbol *name, Hash *namedMap, Args ...oArgs) {
                 args[variadicStart] = Array::allocOnHeap(0, nullptr);
             }
         }
-        CallEnding(namedMap, PrimaryConstants::nilConst, args)
+        CallEnding(namedMap, &PrimaryConstants::NilConst, args)
     } else {
         Object *sargs[CallNumArgs] = {oArgs...};
         return callNV(name, namedMap, CallNumArgs, sargs);
@@ -446,6 +446,18 @@ Object *Object::callNV(Symbol *name, Hash *namedMap, int n, Object **args) {
 
 Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args) {
 
+}
+
+Object *Object::defineClass(Symbol *nameSymbol, Class *parent, Object *(*definition)(Class *)) {
+    return nullptr;
+}
+
+Object *Object::defineModule(Symbol *nameSymbol, Object *(*definition)(Class *)) {
+    return nullptr;
+}
+
+Object *Object::getConst(Symbol *nameSymbol) {
+    return nullptr;
 }
 
 } // UltraRuby
