@@ -8,7 +8,7 @@
 #include <llvm/IR/Instructions.h>
 #include <deque>
 #include "../ast/FunctionDef.h"
-#include "../ast/Variable.h"
+#include "../ast/LocalVariable.h"
 #include "../ast/ClassDef.h"
 #include "../lang/Class.h"
 #include "../ast/ModuleDef.h"
@@ -27,7 +27,9 @@ public:
 
     void leaveFunctionBody();
 
-    llvm::Value *getVariable(const std::string &name);
+    void addLocalVariable(std::string name, llvm::AllocaInst *alloca);
+
+    llvm::AllocaInst *getLocalVariable(const std::string &name);
 
     std::string deriveClassDeclFunction(UltraRuby::AST::ClassDef *pDef);
 
@@ -40,8 +42,6 @@ public:
     Lang::Class **getOrAllocModule(AST::ModuleDef *moduleDef);
 
     Lang::Class **getOrAllocClass(AST::ClassDef *pDef);
-
-    void addVariable(std::string name, llvm::Value *alloca);
 
     void markBlockAsTerminated();
 
@@ -65,13 +65,13 @@ public:
 
     void leaveModuleDef();
 
-    std::string getNearestClassIdentifier();
+    std::vector<std::string> getModuleScopeStack();
 
 private:
     Scope(Scope *outer);
 
     Scope *outer;
-    std::map<std::string, llvm::Value *> vars;
+    std::map<std::string, llvm::AllocaInst *> vars;
     std::deque<llvm::BasicBlock *> deque;
 };
 

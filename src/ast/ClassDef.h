@@ -6,29 +6,21 @@
 #include <utility>
 #include <vector>
 #include "Statement.h"
+#include "DefinitionName.h"
 
 namespace UltraRuby {
 namespace AST {
 
 class ClassDef : public Statement {
 public:
-    ClassDef(std::string className, std::string outerModule, std::string superclassIdentifier,
-             AST::Block *definition) :
-            Statement(STMT_CLASS_DEF),
-            className(std::move(className)),
-            outerModule(std::move(outerModule)),
-            superclass(std::move(superclassIdentifier)),
-            definition(definition) {}
+    ClassDef(Statement* classPos, Statement *superclass, AST::Block *definition)
+            : Statement(STMT_CLASS_DEF), classPos(classPos), superclass(superclass), definition(definition) {}
 
-    const std::string &getClassName() const {
-        return className;
+    Statement *getClassPos() const {
+        return classPos;
     }
 
-    const std::string &getOuterModule() const {
-        return outerModule;
-    }
-
-    const std::string &getSuperclass() const {
+    Statement *getSuperclass() const {
         return superclass;
     }
 
@@ -37,10 +29,9 @@ public:
     }
 
 private:
-    std::string className;
-    std::string outerModule;
-    std::string superclass;
-    AST::Block *definition;
+    Statement *classPos;
+    Statement *superclass;
+    Block *definition;
 };
 
 } // UltraRuby

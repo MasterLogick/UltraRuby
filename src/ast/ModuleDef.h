@@ -5,22 +5,18 @@
 #include <memory>
 #include <vector>
 #include "Statement.h"
+#include "DefinitionName.h"
 
 namespace UltraRuby {
 namespace AST {
 
 class ModuleDef : public Statement {
 public:
-    ModuleDef(std::string moduleName, std::string outerModule, AST::Block *definition)
-            : Statement(STMT_MODULE_DEF), moduleName(std::move(moduleName)),
-              outerModule(std::move(outerModule)), definition(definition) {}
+    ModuleDef(Statement *modulePos, AST::Block *definition)
+            : Statement(STMT_MODULE_DEF), modulePos(modulePos), definition(definition) {}
 
-    const std::string &getModuleName() const {
-        return moduleName;
-    }
-
-    const std::string &getOuterModule() const {
-        return outerModule;
+    Statement *getModulePos() const {
+        return modulePos;
     }
 
     AST::Block *getDefinition() const {
@@ -28,8 +24,7 @@ public:
     }
 
 private:
-    std::string moduleName;
-    std::string outerModule;
+    Statement *modulePos;
     AST::Block *definition;
 };
 

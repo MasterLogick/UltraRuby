@@ -34,11 +34,11 @@ Lang::Class **Scope::getOrAllocClass(AST::ClassDef *pDef) {
     return nullptr;
 }
 
-llvm::Value *Scope::getVariable(const std::string &name) {
+llvm::AllocaInst *Scope::getLocalVariable(const std::string &name) {
     return vars[name];
 }
 
-void Scope::addVariable(std::string name, llvm::Value *alloca) {
+void Scope::addLocalVariable(std::string name, llvm::AllocaInst *alloca) {
     vars[name] = alloca;
 }
 
@@ -101,8 +101,8 @@ void Scope::enterModuleDef(AST::ModuleDef *moduleDef) {
 
 }
 
-std::string Scope::getNearestClassIdentifier() {
-    return std::string();
+std::vector<std::string> Scope::getModuleScopeStack() {
+    return {};
 }
 } // UltraRuby
 } // IR

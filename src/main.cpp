@@ -37,7 +37,7 @@ int main() {
 # frozen_string_literal: true
 class C
   def a=(b)
-    b
+    a
   end
 
   def a
@@ -85,7 +85,7 @@ end
     std::cout << "entering ruby code. self: " << main << std::endl;
     try {
         auto resp = func(main);
-        std::cout << "executed ruby code. ret val class: " << resp->getObjectClass()->getName() << std::endl;
+        std::cout << "executed ruby code. ret val ptr: " << resp << std::endl;
     } catch (Lang::Exception &e) {
         std::cout << "uncaught lang exception" << std::endl;
     }

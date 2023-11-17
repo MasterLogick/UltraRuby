@@ -12,6 +12,7 @@ enum StatementType {
 
     STMT_CALL,
 
+    STMT_BOOL_CONST,
     STMT_FLOAT_CONST,
     STMT_INT_CONST,
     STMT_STRING,
@@ -20,7 +21,10 @@ enum StatementType {
     STMT_ARRAY,
     STMT_HASH,
 
-    STMT_VARIABLE,
+    STMT_LOCAL_VARIABLE,
+    STMT_INSTANCE_VARIABLE,
+    STMT_LANG_VARIABLE,
+    STMT_CONSTANT_REF,
 
     STMT_CLASS_DEF,
     STMT_MODULE_DEF,
@@ -34,8 +38,6 @@ enum StatementType {
     STMT_WHILE,
     STMT_CASE,
     STMT_FOR,
-
-    STMT_BOOL_CONST,
 
     STMT_RETURN,
     STMT_NEXT,

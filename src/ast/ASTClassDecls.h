@@ -22,6 +22,8 @@ class ClassDef;
 
 class ClassInstanceDef;
 
+class ConstantRef;
+
 class ExceptionalBlock;
 
 class FloatConst;
@@ -36,7 +38,13 @@ class Hash;
 
 class If;
 
+class InstanceVariable;
+
 class IntegerConst;
+
+class LangVariable;
+
+class LocalVariable;
 
 class ModuleDef;
 
@@ -55,8 +63,6 @@ class String;
 class Symbol;
 
 class UnaryOperation;
-
-class Variable;
 
 class While;
 

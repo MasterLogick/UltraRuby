@@ -40,7 +40,7 @@ private:
 
     llvm::Value *codegenBlock(AST::Block *block);
 
-    llvm::Constant * codegenBoolConst(bool val);
+    llvm::Constant *codegenBoolConst(bool val);
 
     llvm::Value *codegenBreak(AST::Break *breakAst);
 
@@ -82,15 +82,19 @@ private:
 
     llvm::LoadInst *codegenSymbol(AST::Symbol *symbol);
 
+    llvm::LoadInst *codegenSymbol(const std::string &symbol);
+
     llvm::Value *codegenUnaryOperation(AST::UnaryOperation *unaryOperation);
 
-    llvm::Value *codegenVariable(AST::Variable *variable);
+    llvm::Value *codegenLocalVariable(AST::LocalVariable *variable);
 
     llvm::Value *codegenWhile(AST::While *whileAst);
 
     llvm::Value *codegenYield(AST::Yield *yield);
 
     llvm::Value *codegenYieldSelf();
+
+    llvm::Value *codegenInstanceVariable(AST::InstanceVariable *instanceVariable);
 
     //================= Lang functions codegen end =================
 
@@ -107,6 +111,8 @@ private:
     llvm::Constant *codegenConstPointer(const void *data);
 
     llvm::Value *codegenGetObjectClass(llvm::Value *object);
+
+    llvm::Value *codegenSelf();
 
     bool codegenInitializer();
 
@@ -158,7 +164,9 @@ private:
 
     llvm::Constant *exceptionTypeInfo;
 
-    llvm::Value *codegenSelf();
+    llvm::Value *codegenLangVariable(AST::LangVariable *variable);
+
+    llvm::Value *codegenConstantRef(AST::ConstantRef *constantRef);
 };
 
 } // UltraRuby

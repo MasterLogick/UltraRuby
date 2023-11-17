@@ -10,7 +10,7 @@ public:
 
     virtual ~Statement() = default;
 
-    StatementType type;
+    const StatementType type;
 };
 
 }

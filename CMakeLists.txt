@@ -16,7 +16,7 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lexer/TokenType.h
         src/lexer/LexerInput.h
         src/ast/Statement.h
-        src/ast/Variable.h
+        src/ast/LocalVariable.h
         src/ast/BinaryOperation.h
         src/ast/Call.h
         src/ast/FunctionDef.h
@@ -100,6 +100,10 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lang/Exception.cpp
         src/lang/Exception.h
         src/ast/Rescue.h
+        src/ast/InstanceVariable.h
+        src/ast/DefinitionName.h
+        src/ast/LangVariable.h
+        src/ast/ConstantRef.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

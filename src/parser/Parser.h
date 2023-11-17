@@ -56,46 +56,52 @@ private:
     /**
      * primary ::= primary_object
      *         ::= primary . identifier call_args
+     *         ::= primary . call_args
+     *         ::= primary :: name
      * @return
      */
     AST::Statement *parsePrimary();
 
     /**
      * primary_object ::= string
-     *         ::= int
-     *         ::= float
-     *         ::= k_true
-     *         ::= k_false
-     *         ::= k_self
-     *         ::= : identifier
-     *         ::= k_begin comp_statement k_end
-     *         ::= ( comp_statement )
-     *         ::= [ array
-     *         ::= { hash
-     *         ::= k_return call_args
-     *         ::= k_next call_args
-     *         ::= k_break call_args
-     *         ::= k_redo
-     *         ::= k_retry
-     *         ::= k_yield call_args
-     *         ::= k_yield_self
-     *         ::= k_if stmt k_then_opt comp_statement if_branches
-     *         ::= k_unless stmt k_then_opt comp_statement k_end
-     *         ::= k_while stmt k_do_opt comp_statement k_end
-     *         ::= k_until stmt k_do_opt comp_statement k_end
-     *         ::= k_case stmt case_body k_end
-     *         ::= k_for stmt k_in stmt k_do_opt comp_statement k_end
-     *         ::= class variable superclass_opt body_stmt k_end
-     *         ::= class << stmt body_stmt k_end
-     *         ::= k_module variable body_stmt k_end
-     *         ::= def func_name func_def_args body_stmt k_end
-     *         ::= def func_name ( func_def_args ) body_stmt k_end
-     *         ::= un_op primary
-     *         ::= variable
+     *                ::= int
+     *                ::= float
+     *                ::= k_true
+     *                ::= k_false
+     *                ::= k_self
+     *                ::= : identifier
+     *                ::= k_begin comp_statement k_end
+     *                ::= ( comp_statement )
+     *                ::= [ array
+     *                ::= { hash
+     *                ::= k_return call_args
+     *                ::= k_next call_args
+     *                ::= k_break call_args
+     *                ::= k_redo
+     *                ::= k_retry
+     *                ::= k_yield call_args
+     *                ::= k_yield_self
+     *                ::= k_if stmt k_then_opt comp_statement if_branches
+     *                ::= k_unless stmt k_then_opt comp_statement k_end
+     *                ::= k_while stmt k_do_opt comp_statement k_end
+     *                ::= k_until stmt k_do_opt comp_statement k_end
+     *                ::= k_case stmt case_body k_end
+     *                ::= k_for stmt k_in stmt k_do_opt comp_statement k_end
+     *                ::= class definitionName body_stmt k_end
+     *                ::= class definitionName < stmt body_stmt k_end
+     *                ::= class << stmt body_stmt k_end
+     *                ::= k_module definitionName body_stmt k_end
+     *                ::= def func_name func_def_args body_stmt k_end
+     *                ::= def func_name ( func_def_args ) body_stmt k_end
+     *                ::= un_op primary
+     *                ::= @ identifier
+     *                ::= name
+     *                ::= :: name
+     *                ::= name call_args
+     *                ::= :: name call_args
      * @return
      */
     AST::Statement *parsePrimaryObject();
-
 
     bool primaryTest();
 
@@ -159,18 +165,6 @@ private:
     AST::FunctionDef *parseBlock();
 
     /**
-     * variable ::= dc_variable
-     *          ::= ndc_variable
-     * dc_variable ::= :: identifier
-     *             ::= :: identifier dc_variable
-     * ndc_variable ::= identifier
-     *              ::= identifier :: ndc_variable
-     * @param ident
-     * @return
-     */
-    bool parseVariable(std::string &ident, bool greedy);
-
-    /**
      * func_def_args ::= arg
      *               ::= arg, func_def_args
      * arg ::= identifier
@@ -179,6 +173,16 @@ private:
      * @return
      */
     bool parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy);
+
+    /**
+     * name ::= identifier
+     *      ::= identifier ?
+     *      ::= identifier !
+     *      ::= identifier =
+     * @return
+     */
+    std::string parseName(bool withEqSign);
+
 
     Lexer::TokenType nextLexerToken(bool skipSpaces = false);
 
@@ -202,15 +206,17 @@ private:
 
     bool isATerm(Lexer::TokenType token);
 
-    Lexer::TokenQueue *queue;
-    Lexer::TokenType currentLexerToken;
-    bool error;
-
     std::string parseFunctionName();
 
     AST::Statement *parseFunctionDef();
 
     bool parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton);
+
+    Lexer::TokenQueue *queue;
+    Lexer::TokenType currentLexerToken;
+    bool error;
+
+    bool testName(bool withEqSign);
 };
 
 } // UltraRuby
