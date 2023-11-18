@@ -222,96 +222,116 @@ llvm::Value *CodeGenerator::codegenHash(AST::Hash *hash) {
     return codegenLangCall(langHashAlloc, {builder->getInt32(pairs.size()), arrAlloca});
 }
 
-llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) {
-    std::string opLabel;
-    //todo rewrite to op=>string mapping
-    switch (binOp->getOperator()) {
-        case AST::BIN_OP_LESS:
-            opLabel = "<";
-            break;
-        case AST::BIN_OP_LESS_EQUAL:
-            opLabel = "<=";
-            break;
-        case AST::BIN_OP_EQUAL:
-            opLabel = "==";
-            break;
-        case AST::BIN_OP_CASE_EQUAL:
-            opLabel = "===";
-            break;
-        case AST::BIN_OP_GREATER_EQUAL:
-            opLabel = ">=";
-            break;
-        case AST::BIN_OP_GREATER:
-            opLabel = ">";
-            break;
-        case AST::BIN_OP_THREE_WAY_COMPARE:
-            opLabel = "<=>";
-            break;
+const std::map<AST::OperationType, std::string> ops = {
+        {AST::BIN_OP_LESS,               "<"},
+        {AST::BIN_OP_LESS_EQUAL,         "<="},
+        {AST::BIN_OP_EQUAL,              "=="},
+        {AST::BIN_OP_CASE_EQUAL,         "==="},
+        {AST::BIN_OP_GREATER_EQUAL,      ">="},
+        {AST::BIN_OP_GREATER,            ">"},
+        {AST::BIN_OP_THREE_WAY_COMPARE,  "<=>"},
+        {AST::BIN_OP_BIN_OR,             "|"},
+        {AST::BIN_OP_OR,                 "||"},
+        {AST::BIN_OP_BIN_AND,            "&"},
+        {AST::BIN_OP_AND,                "&&"},
+        {AST::BIN_OP_XOR,                "^"},
+        {AST::BIN_OP_LEFT_SHIFT,         "<<"},
+        {AST::BIN_OP_RIGHT_SHIFT,        ">>"},
+        {AST::LEX_OP_PLUS,               "+"},
+        {AST::LEX_OP_MINUS,              "-"},
+        {AST::LEX_OP_STAR,               "*"},
+        {AST::BIN_OP_DIVIDE,             "/"},
+        {AST::BIN_OP_MOD,                "%"},
+        {AST::BIN_OP_POWER,              "**"},
+        {AST::BIN_OP_ASSIGN,             ""},
+        {AST::BIN_OP_BIN_OR_ASSIGN,      "|"},
+        {AST::BIN_OP_OR_ASSIGN,          "||"},
+        {AST::BIN_OP_BIN_AND_ASSIGN,     "&"},
+        {AST::BIN_OP_AND_ASSIGN,         "&&"},
+        {AST::BIN_OP_XOR_ASSIGN,         "^"},
+        {AST::BIN_OP_LEFT_SHIFT_ASSIGN,  "<<"},
+        {AST::BIN_OP_RIGHT_SHIFT_ASSIGN, ">>"},
+        {AST::BIN_OP_ADD_ASSIGN,         "+"},
+        {AST::BIN_OP_SUBTRACT_ASSIGN,    "-"},
+        {AST::BIN_OP_MULTIPLY_ASSIGN,    "*"},
+        {AST::BIN_OP_DIVIDE_ASSIGN,      "/"},
+        {AST::BIN_OP_MOD_ASSIGN,         "%"},
+        {AST::BIN_OP_POWER_ASSIGN,       "**"},
+};
 
-        case AST::BIN_OP_BIN_OR:
-        case AST::BIN_OP_BIN_OR_ASSIGN:
-            opLabel = "|";
-            break;
-        case AST::BIN_OP_OR:
-        case AST::BIN_OP_OR_ASSIGN:
-            opLabel = "||";
-            break;
-        case AST::BIN_OP_BIN_AND:
-        case AST::BIN_OP_BIN_AND_ASSIGN:
-            opLabel = "&";
-            break;
-        case AST::BIN_OP_AND:
-        case AST::BIN_OP_AND_ASSIGN:
-            opLabel = "&&";
-            break;
-        case AST::BIN_OP_XOR:
-        case AST::BIN_OP_XOR_ASSIGN:
-            opLabel = "^";
-            break;
-        case AST::BIN_OP_LEFT_SHIFT:
-        case AST::BIN_OP_LEFT_SHIFT_ASSIGN:
-            opLabel = "<<";
-            break;
-        case AST::BIN_OP_RIGHT_SHIFT:
-        case AST::BIN_OP_RIGHT_SHIFT_ASSIGN:
-            opLabel = ">>";
-            break;
-        case AST::BIN_OP_ADD:
-        case AST::BIN_OP_ADD_ASSIGN:
-            opLabel = "+";
-            break;
-        case AST::BIN_OP_SUBTRACT:
-        case AST::BIN_OP_SUBTRACT_ASSIGN:
-            opLabel = "-";
-            break;
-        case AST::BIN_OP_MULTIPLY:
-        case AST::BIN_OP_MULTIPLY_ASSIGN:
-            opLabel = "*";
-            break;
-        case AST::BIN_OP_DIVIDE:
-        case AST::BIN_OP_DIVIDE_ASSIGN:
-            opLabel = "/";
-            break;
-        case AST::BIN_OP_MOD:
-        case AST::BIN_OP_MOD_ASSIGN:
-            opLabel = "%";
-            break;
-        case AST::BIN_OP_POWER:
-        case AST::BIN_OP_POWER_ASSIGN:
-            opLabel = "**";
-            break;
-        default:
-            logError("not a binary operation");
-            return nullptr;
-    }
-    if (binOp->getOperator() < AST::BIN_OP_ASSIGNMENT_START) {
-        AST::CallArgs args(std::vector<AST::Statement *>{binOp->getRight()}, std::map<std::string, AST::Statement *>(),
-                           nullptr, false);
-        AST::Call call(opLabel, &args, binOp->getLeft());
-        return codegenCall(&call);
-    } else {
-        //todo
+llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) {
+    if (!ops.contains(binOp->getOperator())) {
+        logError("unexpected binary operator");
         return nullptr;
+    }
+    std::string opLabel = ops.at(binOp->getOperator());
+    if (AST::BIN_OP_REGION_START <= binOp->getOperator() && binOp->getOperator() < AST::BIN_OP_ASSIGNMENT_START) {
+        AST::CallArgs args({binOp->getRight()}, {}, nullptr, false, true);
+        AST::Call call(opLabel, &args, binOp->getLeft());
+        return codegenLangCall(langObjectCall[1], {codegenStatement(binOp->getLeft()), codegenSymbol(opLabel),
+                                                   codegenStatement(binOp->getRight())});
+    } else {
+        assert(AST::BIN_OP_ASSIGNMENT_START <= binOp->getOperator() && binOp->getOperator() < AST::BIN_OP_QUESTION &&
+               "unknown binary operation");
+        auto *left = binOp->getLeft();
+        switch (left->type) {
+            case AST::STMT_LOCAL_VARIABLE: {
+                auto *lv = reinterpret_cast<AST::LocalVariable *>(left);
+                auto *alloca = scope->getLocalVariable(lv->getName());
+                if (alloca == nullptr) {
+                    alloca = builder->CreateAlloca(voidpTy, nullptr, lv->getName() + "_alloca");
+                    scope->addLocalVariable(lv->getName(), alloca);
+                }
+                auto *rval = codegenStatement(binOp->getRight());
+                if (rval == nullptr)return nullptr;
+                builder->CreateStore(rval, alloca);
+                return rval;
+            }
+            case AST::STMT_CALL: {
+                auto *call = reinterpret_cast<AST::Call *>(left);
+                auto *callArgs = call->getArgs();
+                if ((callArgs->hasParenthesis() && !call->getName().empty()) || callArgs->getBlock() ||
+                    (!callArgs->hasBrackets() && (!callArgs->getArgs().empty()))) {
+                    logError("unexpected operator-assignment");
+                    return nullptr;
+                }
+                if (!callArgs->getNamedArgs().empty()) {
+                    //todo
+                    logError("unimplemented");
+                    return nullptr;
+                }
+                auto *lhsContainer = call->getObject();
+                auto *lhsContainerVal = lhsContainer != nullptr ? codegenStatement(lhsContainer) : codegenSelf();
+
+                llvm::Value *rhsValue;
+                std::string setValMethodName;
+
+                if (callArgs->hasBrackets()) {
+                    std::vector<llvm::Value *> bracketArgs;
+                    for (const auto &arg: callArgs->getArgs()) {
+                        auto *v = codegenStatement(arg);
+                        if (v == nullptr) {
+                            return nullptr;
+                        }
+                        bracketArgs.push_back(v);
+                    }
+                    auto *lhsValBefore = codegenCall(lhsContainerVal, codegenSymbol("[]"),
+                                                     bracketArgs.size(), bracketArgs);
+                    auto *rhs = codegenLangCall(langObjectCall[1], {lhsValBefore, codegenSymbol(opLabel),
+                                                                    codegenStatement(binOp->getRight())});
+                    bracketArgs.push_back(rhs);
+                    return codegenCall(lhsContainerVal, codegenSymbol("[]="), bracketArgs.size(), rhs);
+                } else {
+                    AST::CallArgs setCallArgs({binOp->getRight()}, {}, nullptr, false, true);
+                    AST::Call setCall(call->getName() + "=", &setCallArgs, nullptr);
+                    return codegenCall(lhsContainerVal, &setCall);
+                }
+            }
+            default: {
+                logError("unexpected left hand side");
+                return nullptr;
+            }
+        }
     }
 }
 
@@ -644,7 +664,7 @@ llvm::Value *CodeGenerator::codegenLocalVariable(AST::LocalVariable *variable) {
     auto *varPtr = scope->getLocalVariable(variable->getName());
     if (varPtr == nullptr) {
         AST::LangVariable self(AST::LangVariable::LVT_SELF);
-        AST::CallArgs callArgs({}, {}, nullptr, false);
+        AST::CallArgs callArgs({}, {}, nullptr, false, true);
         AST::Call c(variable->getName(), &callArgs, &self);
         return codegenCall(&c);
     }
@@ -674,7 +694,8 @@ llvm::Value *CodeGenerator::codegenUnaryOperation(AST::UnaryOperation *unaryOper
             logError("not an unary operation");
             return nullptr;
     }
-    AST::CallArgs args(std::vector<AST::Statement *>(), std::map<std::string, AST::Statement *>(), nullptr, false);
+    AST::CallArgs args(std::vector<AST::Statement *>(), std::map<std::string, AST::Statement *>(), nullptr, false,
+                       true);
     AST::Call call(op, &args, unaryOperation->getExpr());
     return codegenCall(&call);
 }
@@ -769,7 +790,7 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
                            {outerModule, codegenSymbol(name), codegenStatement(superclass), func});
 }
 
-llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args) {
+llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, llvm::ArrayRef<llvm::Value *> args) {
     auto *rescueBlock = scope->getRescueBlock();
     if (rescueBlock != nullptr) {
         auto *normDest = llvm::BasicBlock::Create(*context, "", builder->GetInsertBlock()->getParent(), rescueBlock);
@@ -906,29 +927,44 @@ llvm::Value *CodeGenerator::codegenBreak(AST::Break *breakAst) {
 
 llvm::Value *CodeGenerator::codegenCall(AST::Call *call) {
     llvm::Value *caller;
-    auto *symVal = codegenSymbol(call->getName());
     if (call->getObject() != nullptr) {
         caller = codegenStatement(call->getObject());
     } else {
         caller = codegenSelf();
     }
+    return codegenCall(caller, call);
+}
+
+llvm::Value *CodeGenerator::codegenCall(llvm::Value *caller, AST::Call *call) {
+    auto *symVal = codegenSymbol(call->getName());
     auto &args = call->getArgs()->getArgs();
+    std::vector<llvm::Value *> callArgs;
+    for (const auto &item: args) {
+        auto *val = codegenStatement(item);
+        if (val == nullptr) {
+            return nullptr;
+        }
+        callArgs.push_back(val);
+    }
+    return codegenCall(caller, symVal, args.size(), callArgs);
+}
+
+llvm::Value *CodeGenerator::codegenCall(llvm::Value *caller, llvm::Value *symVal, int directArgsLen,
+                                        llvm::ArrayRef<llvm::Value *> args) {
     if (args.size() <= Lang::Object::MaxDirectArgsLen) {
         std::vector<llvm::Value *> callArgs;
         callArgs.push_back(caller);
         callArgs.push_back(symVal);
         for (const auto &item: args) {
-            auto *val = codegenStatement(item);
-            if (val == nullptr) {
-                return nullptr;
-            }
-            callArgs.push_back(val);
+            callArgs.push_back(item);
         }
-        return codegenLangCall(langObjectCall[args.size()], callArgs);
+        return codegenLangCall(langObjectCall[directArgsLen], callArgs);
     } else {
-        AST::Array array(args);
-        auto *arr = codegenArray(&array);
-        return codegenLangCall(langObjectCallV, std::vector<llvm::Value *>{caller, symVal, arr});
+        auto *alloca = builder->CreateAlloca(voidpTy, builder->getInt32(args.size()));
+        for (int i = 0; i < args.size(); ++i) {
+            builder->CreateStore(args[i], builder->CreateGEP(voidpTy, alloca, {builder->getInt32(i)}));
+        }
+        return codegenLangCall(langObjectCallV, {caller, symVal, builder->getInt32(directArgsLen), alloca});
     }
 }
 
@@ -943,6 +979,7 @@ llvm::Value *CodeGenerator::codegenCase(AST::Case *caseAst) {
         if (arg == nullptr) {
             cond = vec[i]->getCond();
         } else {
+            //todo check order
             cond = &ops.emplace_back(AST::OperationType::BIN_OP_CASE_EQUAL, arg, vec[i]->getCond());
         }
         ifs.emplace_back(cond, vec[i]->getBlock(), &ifs.back());

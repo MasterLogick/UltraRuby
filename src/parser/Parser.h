@@ -153,7 +153,7 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    std::pair<AST::CallArgs *, bool> parseCallArgs();
+    AST::CallArgs *parseCallArgs();
 
     /**
      * block ::= { block_body }

@@ -34,16 +34,38 @@ int main() {
     llvm::InitializeNativeTargetAsmPrinter();
 
     auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
-# frozen_string_literal: true
-class C
+class T
+  def []=(a,b)
+    puts "#{self}[#{a}]=#{b}"
+  end
+
+  def [](a)
+    puts "#{self}[#{a},#{c}]"
+    self
+  end
+
+  def +(b)
+    puts "#{self} + #{b}"
+  end
+
+  def b
+    puts "#{self}.b"
+    "123"
+  end
+
   def a=(b)
-    a
+    puts "#{self}.a=#{b}"
   end
 
   def a
-    3
+    puts "#{self}.a"
+    "123"
   end
+
+
 end
+T.new[T.new]+=T.new.b
+T.new.a*=5
 
 )");
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);

@@ -12,11 +12,17 @@ namespace AST {
 
 class CallArgs {
 public:
-    CallArgs(std::vector<Statement *> args, std::map<std::string, Statement *> namedArgs, FunctionDef *block,
-             bool brackets)
-            : args(std::move(args)), namedArgs(std::move(namedArgs)), block(block), brackets(brackets) {}
+    CallArgs(std::vector<Statement *> args,
+             std::map<std::string, Statement *> namedArgs,
+             FunctionDef *block,
+             bool brackets, bool parenthesis)
+            : args(std::move(args)),
+              namedArgs(std::move(namedArgs)),
+              block(block),
+              brackets(brackets),
+              parenthesis(parenthesis) {}
 
-    inline const std::vector<Statement *> &getArgs() const {
+    const std::vector<Statement *> &getArgs() const {
         return args;
     }
 
@@ -24,12 +30,16 @@ public:
         return namedArgs;
     }
 
-    inline FunctionDef *getBlock() const {
+    FunctionDef *getBlock() const {
         return block;
     }
 
-    inline bool hasBrackets() const {
+    bool hasBrackets() const {
         return brackets;
+    }
+
+    bool hasParenthesis() const {
+        return parenthesis;
     }
 
 private:
@@ -37,6 +47,7 @@ private:
     std::map<std::string, Statement *> namedArgs;
     FunctionDef *block;
     bool brackets;
+    bool parenthesis;
 };
 
 } // UltraRuby

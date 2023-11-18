@@ -102,7 +102,12 @@ private:
 
     llvm::Function *codegenFunctionInternal(AST::FunctionDef *functionDef);
 
-    llvm::Value *codegenLangCall(llvm::Function *langFunction, const std::vector<llvm::Value *> &args);
+    llvm::Value *codegenLangCall(llvm::Function *langFunction, llvm::ArrayRef<llvm::Value *> args);
+
+    llvm::Value *codegenCall(llvm::Value *caller,
+                             llvm::Value *symVal,
+                             int directArgsLen,
+                             llvm::ArrayRef<llvm::Value *> args);
 
     bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
 
@@ -113,6 +118,8 @@ private:
     llvm::Value *codegenGetObjectClass(llvm::Value *object);
 
     llvm::Value *codegenSelf();
+
+    llvm::Value *codegenCall(llvm::Value *caller, AST::Call *call);
 
     bool codegenInitializer();
 
