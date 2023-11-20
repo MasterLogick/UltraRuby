@@ -18,6 +18,11 @@ public:
     static Symbol *get(const char *str);
 
     static const std::map<std::string, Symbol *>& getAllSymbols();
+
+    const std::string &getSym() const {
+        return sym;
+    }
+
 private:
     std::string sym;
 };

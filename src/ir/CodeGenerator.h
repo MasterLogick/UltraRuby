@@ -40,7 +40,7 @@ private:
 
     llvm::Value *codegenBlock(AST::Block *block);
 
-    llvm::Constant *codegenBoolConst(bool val);
+    llvm::Value *codegenBoolConst(bool val);
 
     llvm::Value *codegenBreak(AST::Break *breakAst);
 
@@ -111,6 +111,10 @@ private:
 
     bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
 
+    llvm::Value *codegenLangVariable(AST::LangVariable *variable);
+
+    llvm::Value *codegenConstantRef(AST::ConstantRef *constantRef);
+
     llvm::Constant *codegenPointer(void *data);
 
     llvm::Constant *codegenConstPointer(const void *data);
@@ -133,6 +137,7 @@ private:
     std::map<std::string, llvm::GlobalVariable *> syms;
     std::map<std::string, llvm::GlobalVariable *> strs;
     Scope *scope;
+    int suffix;
 
     llvm::PointerType *voidpTy;
     llvm::Type *int64Ty;
@@ -143,7 +148,7 @@ private:
     llvm::Constant *nilConst;
     llvm::Constant *trueConst;
     llvm::Constant *falseConst;
-    llvm::Constant *globalScope;
+    llvm::Constant *rootClass;
 
     llvm::Function *langArrayAlloc;
     llvm::Function *langHashAlloc;
@@ -160,7 +165,8 @@ private:
     llvm::Function *langObjectDefineClassInstance;
     llvm::Function *langObjectDefineClass;
     llvm::Function *langObjectDefineModule;
-    llvm::Function *langObjectGetConst;
+    llvm::Function *langClassGetConst;
+    llvm::Function *langClassSetConst;
     llvm::Function *langSymbolGet;
 
     llvm::Function *langStringGet;
@@ -170,10 +176,6 @@ private:
     llvm::Function *cxaGetExceptionPtr;
 
     llvm::Constant *exceptionTypeInfo;
-
-    llvm::Value *codegenLangVariable(AST::LangVariable *variable);
-
-    llvm::Value *codegenConstantRef(AST::ConstantRef *constantRef);
 };
 
 } // UltraRuby

@@ -10,8 +10,10 @@ namespace UltraRuby {
 namespace Parser {
 
 class Parser {
+    friend class ParseRewindGuard;
+
 public:
-    explicit Parser(Lexer::TokenQueue *queue) : queue(queue), error(false) {
+    explicit Parser(Lexer::TokenQueue *queue) : queue(queue) {
         currentLexerToken = queue->getNextToken();
     }
 
@@ -21,10 +23,6 @@ public:
      * @return
      */
     AST::Block *parseProgram();
-
-    bool hasErrors() {
-        return error;
-    }
 
 private:
     /**
@@ -145,9 +143,9 @@ private:
 
     /**
      * call_args ::= call_args_inside
-     *           ::= ( call_args_inside ) block_opt
-     *           ::= [ call_args_inside ] block_opt
-     *           ::= block_opt
+     *           ::= ( call_args_inside ) lambda_block_opt
+     *           ::= [ call_args_inside ] lambda_block_opt
+     *           ::= lambda_block_opt
      * call_args_inside ::= arg, call_args_inside
      * arg ::= statement
      *     ::= identifier : statement
@@ -156,13 +154,13 @@ private:
     AST::CallArgs *parseCallArgs();
 
     /**
-     * block ::= { block_body }
-     *       ::= do block_body end
-     * block_body ::= comp_statement
+     * lambda_block ::= { lambda_block_body }
+     *       ::= do lambda_block_body end
+     * lambda_block_body ::= comp_statement
      *            ::= | func_def_args | comp_statement
      * @return
      */
-    AST::FunctionDef *parseBlock();
+    AST::FunctionDef *parseLambdaBlock();
 
     /**
      * func_def_args ::= arg
@@ -172,7 +170,7 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    bool parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy);
+    void parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy);
 
     /**
      * name ::= identifier
@@ -183,14 +181,9 @@ private:
      */
     std::string parseName(bool withEqSign);
 
-
     Lexer::TokenType nextLexerToken(bool skipSpaces = false);
 
-    Lexer::TokenType prevLexerToken();
-
     Lexer::TokenType rewindTo(int ptr);
-
-    void logError(const char *err);
 
     AST::Statement *parseBinOpRight(AST::Statement *left, int precedence = 0);
 
@@ -210,13 +203,12 @@ private:
 
     AST::Statement *parseFunctionDef();
 
-    bool parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton);
+    bool testName(bool withEqSign);
+
+    void parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton);
 
     Lexer::TokenQueue *queue;
     Lexer::TokenType currentLexerToken;
-    bool error;
-
-    bool testName(bool withEqSign);
 };
 
 } // UltraRuby

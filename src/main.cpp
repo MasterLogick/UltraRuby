@@ -12,13 +12,14 @@
 #include "lang/Symbol.h"
 #include "loader/EmittedObject.h"
 #include "lang/Exception.h"
+#include "parser/ParseException.h"
 #include <dlfcn.h>
 
 using namespace UltraRuby;
 
 Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
     std::cout << self << " " << arg << std::endl;
-    return &Lang::PrimaryConstants::NilConst;
+    return Lang::PrimaryConstants::NilConst;
 }
 
 Lang::Object *Uraise(Lang::Object *self, Lang::Object *arg) {
@@ -61,25 +62,27 @@ class T
     puts "#{self}.a"
     "123"
   end
-
-
 end
+
 T.new[T.new]+=T.new.b
 T.new.a*=5
 
 )");
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);
     auto parser = std::make_shared<Parser::Parser>(lexer->getQueue());
-    auto block = parser->parseProgram();
-    if (parser->hasErrors()) {
+    AST::Block *block;
+    try {
+        block = parser->parseProgram();
+    } catch (Parser::ParseException &e) {
+        std::cout << "parsing exception: " << e.what() << std::endl;
         return -1;
     }
     IR::CodeGenerator codeGenerator;
     auto topLevel = new AST::FunctionDef("top_required", std::vector<AST::FuncDefArg *>(), nullptr, block);
     codeGenerator.codegenProgram(topLevel);
+    codeGenerator.debugPrintModuleIR();
 
     Loader::EmittedObject eObj(codeGenerator);
-    codeGenerator.debugPrintModuleIR();
     char *cwd = getcwd(nullptr, 0);
     std::string path(cwd);
     free(cwd);
@@ -99,7 +102,7 @@ T.new.a*=5
         std::cout << "not found entry point in library" << std::endl;
         return -1;
     }
-    auto *main = new Lang::Object(Lang::BasicClasses::ObjectClass);
+    auto *main = Lang::PrimaryConstants::GlobalScope;
     Lang::FunctionDefMeta putsMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uputs)};
     main->defineInstanceMethod(Lang::Symbol::get("puts"), &putsMeta);
     Lang::FunctionDefMeta raiseMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uraise)};
@@ -109,7 +112,7 @@ T.new.a*=5
         auto resp = func(main);
         std::cout << "executed ruby code. ret val ptr: " << resp << std::endl;
     } catch (Lang::Exception &e) {
-        std::cout << "uncaught lang exception" << std::endl;
+        std::cout << "uncaught lang exception: " << e.getException() << std::endl;
     }
     return 0;
 }

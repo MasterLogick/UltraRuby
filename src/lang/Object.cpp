@@ -1,10 +1,13 @@
 #include <iostream>
+#include <cassert>
 #include "Object.h"
 #include "Class.h"
 #include "Symbol.h"
 #include "Array.h"
 #include "Hash.h"
 #include "PrimaryConstants.h"
+#include "Exception.h"
+#include "Heap.h"
 
 namespace UltraRuby {
 namespace Lang {
@@ -39,7 +42,7 @@ if (func->hasNamedArgs()) {\
                         this, namedMap, block,\
                         args[0], args[1], args[2], args[3], args[4]);\
             default:\
-                return nullptr;\
+                throw Exception(nullptr);\
         }\
     } else {\
         switch (func->getDirectArgsNum()) {\
@@ -68,7 +71,7 @@ if (func->hasNamedArgs()) {\
                         this, namedMap,\
                         args[0], args[1], args[2], args[3], args[4]);\
             default:\
-                return nullptr;\
+                throw Exception(nullptr);\
         }\
     }\
 } else if (func->hasBlock()) {\
@@ -98,7 +101,7 @@ if (func->hasNamedArgs()) {\
                     this, block,\
                     args[0], args[1], args[2], args[3], args[4]);\
         default:\
-            return nullptr;\
+            throw Exception(nullptr);\
     }\
 } else {\
     switch (func->getDirectArgsNum()) {\
@@ -127,7 +130,7 @@ if (func->hasNamedArgs()) {\
                     this,\
                     args[0], args[1], args[2], args[3], args[4]);\
         default:\
-            return nullptr;\
+            throw Exception(nullptr);\
     }\
 }
 
@@ -137,16 +140,16 @@ Object *Object::call(Symbol *name, Args ...oArgs) {
     auto *func = findFunction(name);
     if (func == nullptr) {
         // todo try find function using `respond_to?`
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->getRequiredArgsTotalNum() > CallNumArgs) {
         // todo throw oArgs count mismatch exception
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->isSimple()) {
         if (func->getRequiredArgsTotalNum() != CallNumArgs) {
             // todo throw oArgs count mismatch exception
-            return nullptr;
+            throw Exception(nullptr);
         }
         return reinterpret_cast<CallType>(func->getFunction())(this, oArgs...);
     }
@@ -204,16 +207,16 @@ Object *Object::callB(Symbol *name, Proc *block, Args ...oArgs) {
     auto *func = findFunction(name);
     if (func == nullptr) {
         // todo try find function using `respond_to?`
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->getRequiredArgsTotalNum() > CallNumArgs) {
         // todo throw oArgs count mismatch exception
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->isSimple()) {
         if (func->getRequiredArgsTotalNum() != CallNumArgs) {
             // todo throw oArgs count mismatch exception
-            return nullptr;
+            throw Exception(nullptr);
         }
         return reinterpret_cast<CallType>(func->getFunction())(this, oArgs...);
     }
@@ -271,7 +274,7 @@ Object *Object::callN(Symbol *name, Hash *namedMap, Args ...oArgs) {
     auto *func = findFunction(name);
     if (func == nullptr) {
         // todo try find function using `respond_to?`
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (!func->hasNamedArgs()) {
         if (CallNumArgs + 1 <= MaxDirectArgsLen) {
@@ -283,7 +286,7 @@ Object *Object::callN(Symbol *name, Hash *namedMap, Args ...oArgs) {
     }
     if (func->getRequiredArgsTotalNum() > CallNumArgs) {
         // todo throw oArgs count mismatch exception
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
         Object *sargs[CallNumArgs] = {oArgs...};
@@ -339,7 +342,7 @@ Object *Object::callNB(Symbol *name, Hash *namedMap, Proc *block, Args ...oArgs)
     auto *func = findFunction(name);
     if (func == nullptr) {
         // todo try find function using `respond_to?`
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (!func->hasNamedArgs()) {
         if (CallNumArgs + 1 <= MaxDirectArgsLen) {
@@ -351,7 +354,7 @@ Object *Object::callNB(Symbol *name, Hash *namedMap, Proc *block, Args ...oArgs)
     }
     if (func->getRequiredArgsTotalNum() > CallNumArgs) {
         // todo throw oArgs count mismatch exception
-        return nullptr;
+        throw Exception(nullptr);
     }
     if (func->getDirectArgsNum() <= MaxDirectArgsLen) {
         Object *sargs[CallNumArgs] = {oArgs...};
@@ -407,27 +410,31 @@ Symbol *Object::defineInstanceMethod(Symbol *nameSymbol, FunctionDefMeta *method
 }
 
 Symbol *Object::defineSingletonMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef) {
-    singletonMethods.set(nameSymbol, methodDef);
+    if (singletonMethods == nullptr) {
+        singletonMethods = new HashInternal();
+    }
+    singletonMethods->set(nameSymbol, methodDef);
     return nameSymbol;
 }
 
-Object *Object::defineClassInstance(Object *(*)(Object *)) {
-    return nullptr;
+Object *Object::defineClassInstance(Object *(*definition)(Object *)) {
+    //todo rebind object to new subclass and invoke definition
+    throw Exception(nullptr);
 }
 
 const FunctionDefMeta *Object::findFunction(Symbol *name) {
-    // todo maybe check that name starts with low case
-    auto *v = singletonMethods.get(name);
-    if (v == nullptr) {
-        Class *cl = objectClass;
-        while (cl != nullptr) {
-            v = cl->getConsts().get(name);
-            if (v != nullptr) break;
-            cl = cl->getParent();
-        }
-        if (v == nullptr) {
-            // todo search in global scope
-        }
+    void *v = nullptr;
+    if (singletonMethods) {
+        v = singletonMethods->get(name);
+    }
+    if (v != nullptr) {
+        return static_cast<const FunctionDefMeta *>(v);
+    }
+    Class *cl = objectClass;
+    while (cl != nullptr) {
+        v = cl->getConsts().get(name);
+        if (v != nullptr) break;
+        cl = cl->getParent();
     }
     return static_cast<const FunctionDefMeta *>(v);
 }
@@ -449,16 +456,21 @@ Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object
 }
 
 Object *Object::defineClass(Symbol *nameSymbol, Class *parent, Object *(*definition)(Class *)) {
-    return nullptr;
+    if (this == PrimaryConstants::GlobalScope) {
+        return BasicClasses::RootClass->defineClass(nameSymbol, parent, definition);
+    }
+    assert(objectClass == BasicClasses::ClassClass && "class definition in method body");
+    auto *c = static_cast<Class *>(this);
+    if (auto *v = c->getConsts().get(nameSymbol)) {
+        return definition(static_cast<Class *>(v));
+    }
+    auto *v = new Class(parent, nameSymbol->getSym(), sizeof(Object));
+    c->setConst(nameSymbol, v);
+    return definition(v);
 }
 
 Object *Object::defineModule(Symbol *nameSymbol, Object *(*definition)(Class *)) {
-    return nullptr;
+    throw Exception(nullptr);
 }
-
-Object *Object::getConst(Symbol *nameSymbol) {
-    return nullptr;
-}
-
 } // UltraRuby
 } // Lang

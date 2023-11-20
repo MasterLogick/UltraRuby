@@ -320,7 +320,7 @@ llvm::Value *CodeGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) 
                     auto *rhs = codegenLangCall(langObjectCall[1], {lhsValBefore, codegenSymbol(opLabel),
                                                                     codegenStatement(binOp->getRight())});
                     bracketArgs.push_back(rhs);
-                    return codegenCall(lhsContainerVal, codegenSymbol("[]="), bracketArgs.size(), rhs);
+                    return codegenCall(lhsContainerVal, codegenSymbol("[]="), bracketArgs.size(), bracketArgs);
                 } else {
                     AST::CallArgs setCallArgs({binOp->getRight()}, {}, nullptr, false, true);
                     AST::Call setCall(call->getName() + "=", &setCallArgs, nullptr);
@@ -477,9 +477,12 @@ void CodeGenerator::declareExternLangFunctions() {
     langObjectDefineModule = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
                                                     "_ZN9UltraRuby4Lang6Object12defineModuleEPNS0_6SymbolEPFPS1_PNS0_5ClassEE",
                                                     *module);
-    langObjectGetConst = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang5Class9getConstsEv",
-                                                *module);
+    langClassGetConst = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
+                                               "_ZN9UltraRuby4Lang5Class8getConstEPNS0_6SymbolE",
+                                               *module);
+    langClassSetConst = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
+                                               "_ZN9UltraRuby4Lang5Class8setConstEPNS0_6SymbolEPNS0_6ObjectE",
+                                               *module);
     langSymbolGet = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
                                            "_ZN9UltraRuby4Lang6Symbol3getEPKc", *module);
     langStringGet = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
@@ -505,9 +508,8 @@ void CodeGenerator::declareExternLangFunctions() {
                                          "_ZN9UltraRuby4Lang16PrimaryConstants9TrueConstE");
     falseConst = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
                                           "_ZN9UltraRuby4Lang16PrimaryConstants10FalseConstE");
-    globalScope = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
-                                           "_ZN9UltraRuby4Lang16PrimaryConstants11GlobalScopeE");
-
+    rootClass = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                         "_ZN9UltraRuby4Lang12BasicClasses9RootClassE");
 }
 
 void CodeGenerator::debugPrintModuleIR() {
@@ -634,11 +636,11 @@ void CodeGenerator::runPass(llvm::legacy::PassManager &manager) {
     manager.run(*module);
 }
 
-llvm::Constant *CodeGenerator::codegenBoolConst(bool val) {
+llvm::Value *CodeGenerator::codegenBoolConst(bool val) {
     if (val) {
-        return trueConst;
+        return builder->CreateLoad(voidpTy, trueConst);
     } else {
-        return falseConst;
+        return builder->CreateLoad(voidpTy, falseConst);
     }
 }
 
@@ -651,7 +653,7 @@ llvm::Value *CodeGenerator::codegenBlock(AST::Block *block) {
         }
     }
     if (retVal == nullptr) {
-        retVal = nilConst;
+        retVal = builder->CreateLoad(voidpTy, nilConst);
     }
     return retVal;
 }
@@ -659,7 +661,7 @@ llvm::Value *CodeGenerator::codegenBlock(AST::Block *block) {
 llvm::Value *CodeGenerator::codegenLocalVariable(AST::LocalVariable *variable) {
     // todo reconsider
     if (variable->getName() == "nil") {
-        return nilConst;
+        return builder->CreateLoad(voidpTy, nilConst);
     }
     auto *varPtr = scope->getLocalVariable(variable->getName());
     if (varPtr == nullptr) {
@@ -715,7 +717,7 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
     if (ifAst->getTrueBranch() != nullptr) {
         trueBranchRetVal = codegenStatement(ifAst->getTrueBranch());
     } else {
-        trueBranchRetVal = nilConst;
+        trueBranchRetVal = builder->CreateLoad(voidpTy, nilConst);
     }
     trueBranch = builder->GetInsertBlock();
     builder->CreateBr(merge);
@@ -724,7 +726,7 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
     if (ifAst->getFalseBranch() != nullptr) {
         falseBranchRetVal = codegenStatement(ifAst->getFalseBranch());
     } else {
-        falseBranchRetVal = nilConst;
+        falseBranchRetVal = builder->CreateLoad(voidpTy, nilConst);
     }
     falseBranch = builder->GetInsertBlock();
     builder->CreateBr(merge);
@@ -738,20 +740,13 @@ llvm::Value *CodeGenerator::codegenIf(AST::If *ifAst) {
 
 llvm::Value *CodeGenerator::codegenCastToBoolInt1(llvm::Value *ptr) {
     // ptr != nil & ptr != false -> true
-    auto *nilCheck = builder->CreateICmpNE(ptr, nilConst, "nilCheck");
-    auto *boolType = builder->CreateICmpNE(ptr, falseConst, "falseCheck");
+    auto *nilCheck = builder->CreateICmpNE(ptr, builder->CreateLoad(voidpTy, nilConst), "nilCheck");
+    auto *boolType = builder->CreateICmpNE(ptr, builder->CreateLoad(voidpTy, falseConst), "falseCheck");
     auto *orVal = builder->CreateAnd(nilCheck, boolType);
     return orVal;
 }
 
 llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
-    AST::FunctionDef functionDef("classDef:" + scope->getFullClassIdentifier(classDef),
-                                 std::vector<AST::FuncDefArg *>(), nullptr, classDef->getDefinition());
-
-    scope->enterClassDef(classDef);
-    auto *func = codegenFunctionInternal(&functionDef);
-    scope->leaveClassDef();
-
     auto *classPos = classDef->getClassPos();
     std::string name;
     llvm::Value *outerModule;
@@ -760,7 +755,7 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
             auto *constRef = reinterpret_cast<AST::ConstantRef *>(classPos);
             name = constRef->getName();
             if (constRef->getHolder() == nullptr) {
-                outerModule = globalScope;
+                outerModule = codegenSelf();
             } else {
                 outerModule = codegenStatement(constRef->getHolder());
             }
@@ -768,16 +763,7 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
         }
         case AST::STMT_LOCAL_VARIABLE: {
             name = reinterpret_cast<AST::LocalVariable *>(classPos)->getName();
-            auto outerModules = scope->getModuleScopeStack();
-            AST::ConstantRef *ref = nullptr;
-            for (const auto &constName: outerModules) {
-                ref = new AST::ConstantRef(ref, constName);
-            }
-            if (ref == nullptr) {
-                outerModule = globalScope;
-            } else {
-                outerModule = codegenStatement(ref);
-            }
+            outerModule = codegenSelf();
             break;
         }
         default: {
@@ -785,13 +771,20 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
             return nullptr;
         }
     }
+
+    AST::FunctionDef functionDef("classDef:" + name + std::to_string(suffix++),
+                                 std::vector<AST::FuncDefArg *>(), nullptr, classDef->getDefinition());
+    scope->enterNewScope();
+    auto *func = codegenFunctionInternal(&functionDef);
+    scope->leaveScope();
+
     auto *superclass = classDef->getSuperclass();
     return codegenLangCall(langObjectDefineClass,
                            {outerModule, codegenSymbol(name), codegenStatement(superclass), func});
 }
 
 llvm::Value *CodeGenerator::codegenLangCall(llvm::Function *langFunction, llvm::ArrayRef<llvm::Value *> args) {
-    auto *rescueBlock = scope->getRescueBlock();
+    auto *rescueBlock = scope->getHandlerBlock();
     if (rescueBlock != nullptr) {
         auto *normDest = llvm::BasicBlock::Create(*context, "", builder->GetInsertBlock()->getParent(), rescueBlock);
         auto *rv = builder->CreateInvoke(langFunction, normDest, rescueBlock, args);
@@ -806,13 +799,6 @@ llvm::Value *CodeGenerator::codegenFor(AST::For *forAst) {
 }
 
 llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
-    AST::FunctionDef functionDef("moduleDef:" + scope->getFullModuleIdentifier(moduleDef),
-                                 std::vector<AST::FuncDefArg *>(), nullptr, moduleDef->getDefinition());
-
-    scope->enterModuleDef(moduleDef);
-    auto *func = codegenFunctionInternal(&functionDef);
-    scope->leaveModuleDef();
-
     auto *modulePos = moduleDef->getModulePos();
     std::string name;
     llvm::Value *outerModule;
@@ -821,7 +807,7 @@ llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
             auto *constRef = reinterpret_cast<AST::ConstantRef *>(modulePos);
             name = constRef->getName();
             if (constRef->getHolder() == nullptr) {
-                outerModule = globalScope;
+                outerModule = codegenSelf();
             } else {
                 outerModule = codegenStatement(constRef->getHolder());
             }
@@ -829,16 +815,7 @@ llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
         }
         case AST::STMT_LOCAL_VARIABLE: {
             name = reinterpret_cast<AST::LocalVariable *>(modulePos)->getName();
-            auto outerModules = scope->getModuleScopeStack();
-            AST::ConstantRef *ref = nullptr;
-            for (const auto &constName: outerModules) {
-                ref = new AST::ConstantRef(ref, constName);
-            }
-            if (ref == nullptr) {
-                outerModule = globalScope;
-            } else {
-                outerModule = codegenStatement(ref);
-            }
+            outerModule = codegenSelf();
             break;
         }
         default: {
@@ -847,15 +824,22 @@ llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
         }
     }
 
+    AST::FunctionDef functionDef("moduleDef:" + name + std::to_string(suffix++),
+                                 std::vector<AST::FuncDefArg *>(), nullptr, moduleDef->getDefinition());
+    scope->enterNewScope();
+    auto *func = codegenFunctionInternal(&functionDef);
+    scope->leaveScope();
+
+
     return codegenLangCall(langObjectDefineModule, {outerModule, codegenSymbol(name), func});
 }
 
 llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
-    AST::FunctionDef function(scope->getFullFunctionIdentifier(functionDef), functionDef->getArgs(),
+    AST::FunctionDef function("func:" + functionDef->getName(), functionDef->getArgs(),
                               functionDef->getSingleton(), functionDef->getBody());
-    scope->enterFunctionBody(functionDef);
+    scope->enterNewScope();
     auto *func = codegenFunctionInternal(functionDef);
-    scope->leaveFunctionBody();
+    scope->leaveScope();
     if (func == nullptr) {
         return nullptr;
     }
@@ -903,7 +887,7 @@ llvm::Value *CodeGenerator::codegenWhile(AST::While *whileAst) {
 
     builder->SetInsertPoint(condCheck);
     auto *phi = builder->CreatePHI(voidpTy, 2);
-    phi->addIncoming(nilConst, curBlock);
+    phi->addIncoming(builder->CreateLoad(voidpTy, nilConst), curBlock);
     phi->addIncoming(retVal, bodyEnd);
     auto *cond = codegenStatement(whileAst->getCondition());
     auto *boolVal = codegenCastToBoolInt1(cond);
@@ -914,7 +898,8 @@ llvm::Value *CodeGenerator::codegenWhile(AST::While *whileAst) {
 }
 
 llvm::Value *CodeGenerator::codegenClassInstanceDef(AST::ClassInstanceDef *classInstanceDef) {
-    AST::FunctionDef functionDef(scope->deriveClassInstanceMethod(classInstanceDef), std::vector<AST::FuncDefArg *>(),
+    AST::FunctionDef functionDef("classInstance:" + std::to_string(suffix++),
+                                 std::vector<AST::FuncDefArg *>(),
                                  nullptr, classInstanceDef->getDefinition());
     auto *func = codegenFunctionInternal(&functionDef);
     std::vector<llvm::Value *> callArgs{codegenStatement(classInstanceDef->getInstance()), func};
@@ -1112,14 +1097,13 @@ llvm::Value *CodeGenerator::codegenRetry() {
 llvm::Value *CodeGenerator::codegenReturn(AST::Return *returnAst) {
     auto &callArgs = returnAst->getCallArgs()->getArgs();
     if (callArgs.empty()) {
-        builder->CreateRet(nilConst);
+        builder->CreateRet(builder->CreateLoad(voidpTy, builder->CreateLoad(voidpTy, nilConst)));
     } else if (callArgs.size() == 1) {
         builder->CreateRet(codegenStatement(callArgs[0]));
     } else {
         AST::Array arr(callArgs);
         builder->CreateRet(codegenArray(&arr));
     }
-    scope->markBlockAsTerminated();
     //todo handle terminated blocks
     return nullptr;
 }
@@ -1177,18 +1161,18 @@ llvm::Value *CodeGenerator::codegenLangVariable(AST::LangVariable *variable) {
         case AST::LangVariable::LVT_SELF:
             return builder->CreateLoad(voidpTy, scope->getLocalVariable("self"));
         case AST::LangVariable::LVT_NIL:
-            return nilConst;
+            return builder->CreateLoad(voidpTy, builder->CreateLoad(voidpTy, nilConst));
     }
 }
 
 llvm::Value *CodeGenerator::codegenConstantRef(AST::ConstantRef *constantRef) {
     llvm::Value *outer;
     if (constantRef->getHolder() == nullptr) {
-        outer = globalScope;
+        outer = builder->CreateLoad(voidpTy, rootClass);
     } else {
         outer = codegenStatement(constantRef);
     }
-    return codegenLangCall(langObjectGetConst, {outer, codegenSymbol(constantRef->getName())});
+    return codegenLangCall(langClassGetConst, {outer, codegenSymbol(constantRef->getName())});
 }
 }
 }

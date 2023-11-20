@@ -1,7 +1,8 @@
-#include <iostream>
 #include <vector>
 #include "Parser.h"
 #include "../ast/AST.h"
+#include "ParseRewindGuard.h"
+#include "ParseException.h"
 
 namespace UltraRuby {
 namespace Parser {
@@ -16,15 +17,10 @@ AST::Block *Parser::parseProgram() {
         if (currentLexerToken == Lexer::TOK_EOF) {
             break;
         }
-        auto v = parseTopStatement();
-        if (v == nullptr) {
-            break;
-        }
-        list.push_back(v);
+        list.push_back(parseTopStatement());
     }
     if (currentLexerToken != Lexer::TOK_EOF) {
-        logError("left unparsed tokens");
-        return nullptr;
+        throw ParseException("left unparsed tokens");
     }
     return new AST::Block(std::move(list));
 }
@@ -33,14 +29,12 @@ AST::Statement *Parser::parseTopStatement() {
     if (currentLexerToken == Lexer::TOK_BEGIN_UPPER) {
         nextLexerToken(true);
         if (currentLexerToken != Lexer::TOK_BRACE_LEFT) {
-            logError("expected {");
-            return nullptr;
+            throw ParseException("expected {");
         }
         nextLexerToken(true);
         auto stmt = parseProgram();
         if (currentLexerToken != Lexer::TOK_BRACE_RIGHT) {
-            logError("expected }");
-            return nullptr;
+            throw ParseException("expected }");
         }
         return stmt;
     }
@@ -49,9 +43,6 @@ AST::Statement *Parser::parseTopStatement() {
 
 AST::Statement *Parser::parseStatement(int opPrecedence) {
     auto prim = parseUncontrolledStatement(opPrecedence);
-    if (prim == nullptr) {
-        return nullptr;
-    }
     while (true) {
         switch (currentLexerToken) {
             case Lexer::TOK_IF: {
@@ -78,22 +69,21 @@ AST::Statement *Parser::parseStatement(int opPrecedence) {
                 prim = new AST::While(new AST::UnaryOperation(AST::OperationType::UN_OP_NOT, cond), prim);
                 continue;
             }
+            default: {
+                return prim;
+            }
         }
-        break;
     }
-    return prim;
 }
 
 AST::Statement *Parser::parseUncontrolledStatement(int opPrecedence) {
     skipSpaces();
     if (!primaryTest()) {
-        return nullptr;
+        throw ParseException("not a primary statement");
     }
     auto prim = parsePrimary();
-    if (prim == nullptr) {
-        return nullptr;
-    }
-    return parseBinOpRight(prim, opPrecedence);
+    auto res = parseBinOpRight(prim, opPrecedence);
+    return res;
 }
 
 bool Parser::primaryTest() {
@@ -138,45 +128,31 @@ bool Parser::primaryTest() {
 
 AST::Statement *Parser::parsePrimary() {
     auto obj = parsePrimaryObject();
-    if (obj == nullptr) {
-        return nullptr;
-    }
     int ptr;
     while (true) {
         ptr = queue->getPtr();
-        skipTerms();
+        skipSpaces();
         if (currentLexerToken == Lexer::TOK_DOT) {
             nextLexerToken();
             skipTerms();
             if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
                 auto args = parseCallArgs();
-                if (args == nullptr) {
-                    return nullptr;
-                }
                 obj = new AST::Call("call", args, obj);
             } else {
                 if (!testName(false)) {
-                    logError("expected identifier");
-                    return nullptr;
+                    throw ParseException("expected identifier");
                 }
                 std::string name = parseName(false);
                 auto args = parseCallArgs();
-                if (args == nullptr) {
-                    return nullptr;
-                }
                 obj = new AST::Call(std::move(name), args, obj);
             }
         } else if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
             auto args = parseCallArgs();
-            if (args == nullptr) {
-                return nullptr;
-            }
             obj = new AST::Call(std::string(), args, obj);
         } else if (currentLexerToken == Lexer::TOK_DOUBLE_COLON) {
             nextLexerToken();
             if (!testName(false)) {
-                logError("expected name");
-                return nullptr;
+                throw ParseException("expected name");
             }
             obj = new AST::ConstantRef(obj, parseName(false));
         } else {
@@ -206,8 +182,7 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_COLON: {
             nextLexerToken();
             if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                prevLexerToken();
-                return nullptr;
+                throw ParseException("expected identifier");
             }
             std::string sym = queue->getStr();
             nextLexerToken();
@@ -223,18 +198,15 @@ AST::Statement *Parser::parsePrimaryObject() {
         }
         case Lexer::TOK_SELF: {
             nextLexerToken();
-            return new AST::LocalVariable("self");
+            return new AST::LangVariable(AST::LangVariable::LVT_SELF);
         }
         case Lexer::TOK_NIL: {
             nextLexerToken();
-            return new AST::LocalVariable("nil");
+            return new AST::LangVariable(AST::LangVariable::LVT_NIL);
         }
         case Lexer::TOK_BEGIN: {
             nextLexerToken();
             auto mainBlock = parseCompStatement();
-            if (mainBlock == nullptr) {
-                return nullptr;
-            }
             std::vector<AST::Rescue *> rescues;
             while (currentLexerToken == Lexer::TOK_RESCUE) {
                 nextLexerToken(true);
@@ -243,8 +215,7 @@ AST::Statement *Parser::parsePrimaryObject() {
                 if (currentLexerToken == Lexer::TOK_HASH_ASSOC) {
                     nextLexerToken(true);
                     if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                        logError("expected identifier");
-                        return nullptr;
+                        throw ParseException("expected identifier");
                     }
                     var = queue->getStr();
                     nextLexerToken(true);
@@ -253,16 +224,14 @@ AST::Statement *Parser::parsePrimaryObject() {
                     if (currentLexerToken == Lexer::TOK_HASH_ASSOC) {
                         nextLexerToken(true);
                         if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                            logError("expected identifier");
-                            return nullptr;
+                            throw ParseException("expected identifier");
                         }
                         var = queue->getStr();
                         nextLexerToken(true);
                     }
                 }
                 if (currentLexerToken != Lexer::TOK_THEN && !isATerm(currentLexerToken)) {
-                    logError("expected \"then\", \";\" or \"\\n\"");
-                    return nullptr;
+                    throw ParseException("expected \"then\", \";\" or \"\\n\"");
                 }
                 nextLexerToken();
                 auto body = parseCompStatement();
@@ -271,57 +240,57 @@ AST::Statement *Parser::parsePrimaryObject() {
             if (currentLexerToken == Lexer::TOK_ELSE) {
                 nextLexerToken();
                 auto elseBlock = parseCompStatement();
-                if (elseBlock == nullptr) {
-                    return nullptr;
-                }
                 mainBlock = new AST::Block({mainBlock, elseBlock});
             }
             AST::Block *ensureBlock(nullptr);
             if (currentLexerToken == Lexer::TOK_ENSURE) {
                 nextLexerToken();
                 ensureBlock = parseCompStatement();
-                if (ensureBlock == nullptr) {
-                    return nullptr;
-                }
             }
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
-            return new AST::ExceptionalBlock(mainBlock, rescues, ensureBlock);
+            if (rescues.empty() && ensureBlock == nullptr) {
+                return mainBlock;
+            }
+            return new AST::ExceptionalBlock(mainBlock, std::move(rescues), ensureBlock);
         }
         case Lexer::TOK_PAREN_LEFT: {
             nextLexerToken();
             auto stmt = parseCompStatement();
             if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
-                logError("expected \")\"");
-                return nullptr;
+                throw ParseException("expected \")\"");
             }
             nextLexerToken();
             return stmt;
         }
         case Lexer::TOK_BRACKET_LEFT: {
             nextLexerToken();
-            return parseArray();
+            auto arr = parseArray();
+            return arr;
         }
         case Lexer::TOK_BRACE_LEFT: {
             nextLexerToken();
-            return parseHash();
+            auto hash = parseHash();
+            return hash;
         }
         case Lexer::TOK_RETURN: {
             nextLexerToken();
             skipSpaces();
-            return new AST::Return(parseCallArgs());
+            auto callArgs = parseCallArgs();
+            return new AST::Return(callArgs);
         }
         case Lexer::TOK_NEXT: {
             nextLexerToken();
             skipSpaces();
-            return new AST::Next(parseCallArgs());
+            auto callArgs = parseCallArgs();
+            return new AST::Next(callArgs);
         }
         case Lexer::TOK_BREAK: {
             nextLexerToken();
             skipSpaces();
-            return new AST::Break(parseCallArgs());
+            auto callArgs = parseCallArgs();
+            return new AST::Break(callArgs);
         }
         case Lexer::TOK_REDO: {
             nextLexerToken();
@@ -333,7 +302,8 @@ AST::Statement *Parser::parsePrimaryObject() {
         }
         case Lexer::TOK_YIELD: {
             nextLexerToken();
-            return new AST::Yield(parseCallArgs());
+            auto callArgs = parseCallArgs();
+            return new AST::Yield(callArgs);
         }
         case Lexer::TOK_YIELD_SELF: {
             nextLexerToken();
@@ -343,8 +313,7 @@ AST::Statement *Parser::parsePrimaryObject() {
             nextLexerToken();
             auto cond = parseStatement();
             if (currentLexerToken != Lexer::TOK_THEN && !isATerm(currentLexerToken)) {
-                logError("expected \"then\", \";\" or \"\\n\"");
-                return nullptr;
+                throw ParseException("expected \"then\", \";\" or \"\\n\"");
             }
             nextLexerToken(true);
             auto body = parseCompStatement();
@@ -352,20 +321,19 @@ AST::Statement *Parser::parsePrimaryObject() {
                 nextLexerToken();
                 return new AST::If(cond, body, nullptr);
             }
-            return parseIfBranches(cond, body);
+            auto parseRes = parseIfBranches(cond, body);
+            return parseRes;
         }
         case Lexer::TOK_UNLESS: {
             nextLexerToken();
             auto cond = parseStatement();
             if (currentLexerToken != Lexer::TOK_THEN && !isATerm(currentLexerToken)) {
-                logError("expected \"then\", \";\" or \"\\n\"");
-                return nullptr;
+                throw ParseException("expected \"then\", \";\" or \"\\n\"");
             }
             nextLexerToken(true);
             auto body = parseCompStatement();
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
             return new AST::If(new AST::UnaryOperation(AST::UN_OP_NOT, cond), body, nullptr);
         }
@@ -373,29 +341,22 @@ AST::Statement *Parser::parsePrimaryObject() {
             nextLexerToken();
             auto cond = parseStatement();
             if (currentLexerToken != Lexer::TOK_DO && !isATerm(currentLexerToken)) {
-                logError("expected \"do\", \";\" or \"\\n\"");
-                return nullptr;
+                throw ParseException("expected \"do\", \";\" or \"\\n\"");
             }
             nextLexerToken(true);
             auto body = parseCompStatement();
-            if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
-            }
             return new AST::While(cond, body);
         }
         case Lexer::TOK_UNTIL: {
             nextLexerToken();
             auto cond = parseStatement();
             if (currentLexerToken != Lexer::TOK_DO && !isATerm(currentLexerToken)) {
-                logError("expected \"do\", \";\" or \"\\n\"");
-                return nullptr;
+                throw ParseException("expected \"do\", \";\" or \"\\n\"");
             }
             nextLexerToken(true);
             auto body = parseCompStatement();
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
             return new AST::While(new AST::UnaryOperation(AST::UN_OP_NOT, cond), body);
         }
@@ -409,23 +370,15 @@ AST::Statement *Parser::parsePrimaryObject() {
             do {
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_WHEN) {
-                    logError("expected \"when\"");
-                    return nullptr;
+                    throw ParseException("expected \"when\"");
                 }
                 nextLexerToken();
                 auto cond = parseStatement();
-                if (cond == nullptr) {
-                    return nullptr;
-                }
                 if (currentLexerToken != Lexer::TOK_THEN && !isATerm(currentLexerToken)) {
-                    logError("expected \"then\", \"\\n\" or \";\"");
-                    return nullptr;
+                    throw ParseException("expected \"then\", \"\\n\" or \";\"");
                 }
                 nextLexerToken();
                 auto body = parseCompStatement();
-                if (body == nullptr) {
-                    return nullptr;
-                }
                 cases.push_back(new AST::CaseWhereBlock(cond, body));
             } while (currentLexerToken != Lexer::TOK_END);
             nextLexerToken();
@@ -434,29 +387,17 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_FOR: {
             nextLexerToken(true);
             auto var = parseStatement();
-            if (var == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_IN) {
-                logError("expected \"in\"");
-                return nullptr;
+                throw ParseException("expected \"in\"");
             }
             nextLexerToken();
             auto expr = parseStatement();
-            if (expr == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_DO && !isATerm(currentLexerToken)) {
-                logError("expected \"do\", \"\\n\" or \";\"");
-                return nullptr;
+                throw ParseException("expected \"do\", \"\\n\" or \";\"");
             }
             auto body = parseCompStatement();
-            if (body == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
             nextLexerToken();
             return new AST::For(var, expr, body);
@@ -466,48 +407,32 @@ AST::Statement *Parser::parsePrimaryObject() {
             skipTerms();
             if (currentLexerToken == Lexer::TOK_OP) {
                 if (queue->getOperation() != AST::BIN_OP_LEFT_SHIFT) {
-                    logError("expected \"<<\"");
-                    return nullptr;
+                    throw ParseException("expected \"<<\"");
                 }
                 nextLexerToken();
                 auto instance = parseStatement();
-                if (instance == nullptr) {
-                    return nullptr;
-                }
                 auto definition = parseCompStatement();
-                if (definition == nullptr) {
-                    return nullptr;
-                }
                 if (currentLexerToken != Lexer::TOK_END) {
-                    logError("expected \"end\"");
-                    return nullptr;
+                    throw ParseException("expected \"end\"");
                 }
                 nextLexerToken();
                 return new AST::ClassInstanceDef(instance, definition);
             }
             auto *name = parsePrimary();
-            if (name == nullptr) {
-                return nullptr;
-            }
             AST::Statement *superclass;
             if (currentLexerToken == Lexer::TOK_OP) {
                 if (queue->getOperation() != AST::BIN_OP_LESS) {
-                    logError("expected \"<\" or class definition");
-                    return nullptr;
+                    throw ParseException("expected \"<\" or class definition");
                 }
                 nextLexerToken(true);
                 superclass = parseStatement();
-                if (superclass == nullptr) {
-                    return nullptr;
-                }
             } else {
                 superclass = new AST::ConstantRef(nullptr, "Object");
             }
             auto definition = parseCompStatement();
             skipTerms();
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
             nextLexerToken();
             return new AST::ClassDef(name, superclass, definition);
@@ -515,17 +440,9 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_MODULE: {
             nextLexerToken(true);
             auto *name = parsePrimary();
-            if (name == nullptr) {
-                return nullptr;
-            }
-
             auto definition = parseCompStatement();
-            if (definition == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_END) {
-                logError("expected \"end\"");
-                return nullptr;
+                throw ParseException("expected \"end\"");
             }
             nextLexerToken();
             return new AST::ModuleDef(name, definition);
@@ -535,47 +452,36 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_OP: {
             //todo handle degenerate cases of XXX#! and XXX#? method calls
             auto op = convertToUnOp(queue->getOperation());
-            if (op == AST::OP_UNKNOWN) {
-                return nullptr;
-            }
             nextLexerToken();
-            if (currentLexerToken == Lexer::TOK_SPACE) {
-                prevLexerToken();
-                return nullptr;
-            }
             auto expr = parsePrimary();
-            if (expr == nullptr) {
-                return nullptr;
-            }
             return new AST::UnaryOperation(op, expr);
         }
         case Lexer::TOK_NOT: {
             nextLexerToken();
             auto expr = parsePrimary();
-            if (expr == nullptr) {
-                return nullptr;
-            }
             return new AST::UnaryOperation(AST::UN_OP_NOT, expr);
         }
         case Lexer::TOK_AT_SIGN: {
             nextLexerToken();
             if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                logError("expected identifier");
-                return nullptr;
+                throw ParseException("expected identifier");
             }
             auto *var = new AST::InstanceVariable("@" + queue->getStr());
             nextLexerToken();
             return var;
         }
         case Lexer::TOK_IDENTIFIER: {
-            return new AST::LocalVariable(parseName(false));
+            auto name = parseName(false);
+            if ('A' <= name.front() && name.front() <= 'Z') {
+                return new AST::ConstantRef(nullptr, std::move(name));
+            }
+            return new AST::LocalVariable(std::move(name));
         }
         case Lexer::TOK_DOUBLE_COLON: {
             nextLexerToken();
             skipTerms();
             if (!testName(false)) {
-                logError("expected constant/method name");
-                return nullptr;
+                throw ParseException("expected constant/method name");
             }
             std::string name = parseName(false);
             return new AST::ConstantRef(nullptr, name);
@@ -583,11 +489,6 @@ AST::Statement *Parser::parsePrimaryObject() {
         default:
             return nullptr;
     }
-}
-
-void Parser::logError(const char *err) {
-    error = true;
-    std::cerr << "Parser error: " << err << std::endl;
 }
 
 void Parser::skipTerms() {
@@ -598,24 +499,26 @@ void Parser::skipTerms() {
 
 void Parser::skipSpaces() {
     // lexer squashes continuous spaces into one token
-    if (currentLexerToken == Lexer::TOK_SPACE) {
+    if (currentLexerToken == Lexer::TOK_SPACES) {
         nextLexerToken();
     }
 }
 
 bool Parser::isATerm(Lexer::TokenType token) {
-    return token == Lexer::TOK_NEWLINE || token == Lexer::TOK_SPACE || token == Lexer::TOK_SEMICOLON;
+    return token == Lexer::TOK_NEWLINE || token == Lexer::TOK_SPACES || token == Lexer::TOK_SEMICOLON;
 }
 
 AST::Block *Parser::parseCompStatement() {
     std::vector<AST::Statement *> block;
     skipTerms();
     while (true) {
-        auto stmt = parseStatement();
-        if (stmt == nullptr) {
-            break;
-        } else {
+        try {
+            ParseRewindGuard prg(this);
+            auto stmt = parseStatement();
+            prg.release();
             block.push_back(stmt);
+        } catch (ParseException &exception) {
+            break;
         }
         skipTerms();
     }
@@ -631,9 +534,6 @@ AST::Statement *Parser::parseArray() {
     }
     while (true) {
         auto el = parseStatement();
-        if (el == nullptr) {
-            return nullptr;
-        }
         elements.push_back(el);
         if (currentLexerToken == Lexer::TOK_COMMA) {
             nextLexerToken();
@@ -641,8 +541,7 @@ AST::Statement *Parser::parseArray() {
             nextLexerToken();
             return new AST::Array(std::move(elements));
         } else {
-            logError("expected \",\"");
-            return nullptr;
+            throw ParseException("expected \",\"");
         }
     }
 }
@@ -666,27 +565,19 @@ AST::Statement *Parser::parseHash() {
         }
         if (symbolAssoc) {
             auto symbol = new AST::Symbol(queue->getStr());
+            //skip symbol name
             nextLexerToken(true);
+            // skip column
             nextLexerToken(true);
             auto val = parseStatement();
-            if (val == nullptr) {
-                return nullptr;
-            }
             hash.emplace_back(symbol, val);
         } else {
             auto key = parseStatement();
-            if (key == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_HASH_ASSOC) {
-                logError("expected \"=>\"");
-                return nullptr;
+                throw ParseException("expected \"=>\"");
             }
             nextLexerToken();
             auto val = parseStatement();
-            if (val == nullptr) {
-                return nullptr;
-            }
             hash.emplace_back(key, val);
         }
         skipTerms();
@@ -696,8 +587,7 @@ AST::Statement *Parser::parseHash() {
             nextLexerToken();
             return new AST::Hash(std::move(hash));
         } else {
-            logError("expected \",\" or \"}\"");
-            return nullptr;
+            throw ParseException("expected \",\" or \"}\"");
         }
     }
 }
@@ -707,25 +597,19 @@ AST::Statement *Parser::parseIfBranches(
     if (currentLexerToken == Lexer::TOK_ELSE) {
         nextLexerToken();
         auto body = parseCompStatement();
-        if (body == nullptr) {
-            return nullptr;
-        }
         if (currentLexerToken != Lexer::TOK_END) {
-            logError("expected \"end\"");
-            return nullptr;
+            throw ParseException("expected \"end\"");
         }
         nextLexerToken();
         return new AST::If(cond, trueBranch, body);
     }
     if (currentLexerToken != Lexer::TOK_ELSIF) {
-        logError("expected \"else\" or \"elsif\"");
-        return nullptr;
+        throw ParseException("expected \"else\" or \"elsif\"");
     }
     nextLexerToken();
     auto cond1 = parseStatement();
     if (currentLexerToken != Lexer::TOK_THEN && !isATerm(currentLexerToken)) {
-        logError("expected \"then\", \";\" or \"\\n\"");
-        return nullptr;
+        throw ParseException("expected \"then\", \";\" or \"\\n\"");
     }
     nextLexerToken(true);
     auto body = parseCompStatement();
@@ -734,9 +618,6 @@ AST::Statement *Parser::parseIfBranches(
         return new AST::If(cond, body, nullptr);
     }
     auto falseBranch = parseIfBranches(cond1, body);
-    if (falseBranch == nullptr) {
-        return nullptr;
-    }
     return new AST::If(cond, trueBranch, falseBranch);
 }
 
@@ -756,7 +637,7 @@ AST::CallArgs *Parser::parseCallArgs() {
     skipSpaces();
     if (!expectTrailingParen && !expectTrailingBracket) {
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
-            auto block = parseBlock();
+            auto block = parseLambdaBlock();
             return new AST::CallArgs(std::vector<AST::Statement *>(), std::map<std::string, AST::Statement *>(), block,
                                      false, false);
         }
@@ -768,16 +649,19 @@ AST::CallArgs *Parser::parseCallArgs() {
         if (expectTrailingParen || expectTrailingBracket) {
             skipTerms();
         }
-        auto stmt = parseUncontrolledStatement();
-        if (stmt == nullptr) {
+        AST::Statement *stmt;
+        try {
+            ParseRewindGuard prg(this);
+            stmt = parseUncontrolledStatement();
+            prg.release();
+        } catch (ParseException &) {
             if (expectTrailingParen && currentLexerToken == Lexer::TOK_PAREN_RIGHT ||
                 expectTrailingBracket && currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
                 nextLexerToken();
                 break;
             }
             if (expectTrailingParen || expectTrailingBracket) {
-                logError(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
-                return nullptr;
+                throw ParseException(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
             }
             break;
         }
@@ -795,15 +679,14 @@ AST::CallArgs *Parser::parseCallArgs() {
             if (currentLexerToken == Lexer::TOK_NEWLINE) {
                 nextLexerToken();
             } else {
-                logError(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
-                return nullptr;
+                throw ParseException(expectTrailingParen ? "expected \")\"" : "expected \"]\"");
             }
         }
     }
     if (positionalArgs.empty() || expectTrailingParen || expectTrailingBracket) {
         skipSpaces();
         if (currentLexerToken == Lexer::TOK_BRACE_LEFT || currentLexerToken == Lexer::TOK_DO) {
-            auto block = parseBlock();
+            auto block = parseLambdaBlock();
             return new AST::CallArgs(std::move(positionalArgs), std::move(namedArgs), block, expectTrailingBracket,
                                      expectTrailingParen);
         }
@@ -812,46 +695,37 @@ AST::CallArgs *Parser::parseCallArgs() {
                              expectTrailingParen);
 }
 
-AST::FunctionDef *Parser::parseBlock() {
+AST::FunctionDef *Parser::parseLambdaBlock() {
     bool expectEndToken = currentLexerToken == Lexer::TOK_DO;
     if (currentLexerToken != Lexer::TOK_BRACE_LEFT && currentLexerToken != Lexer::TOK_DO) {
-        logError("expected \"{\" or \"do\"");
-        return nullptr;
+        throw ParseException("expected \"{\" or \"do\"");
     }
     nextLexerToken();
     skipTerms();
     std::vector<AST::FuncDefArg *> args;
     if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_BIN_OR) {
         nextLexerToken();
-        if (!parseFuncDefArgs(args, true)) {
-            return nullptr;
-        }
+        parseFuncDefArgs(args, true);
         if (currentLexerToken != Lexer::TOK_OP || queue->getOperation() != AST::BIN_OP_BIN_OR) {
-            logError("expected \"|\"");
-            return nullptr;
+            throw ParseException("expected \"|\"");
         }
         nextLexerToken();
     }
     auto body = parseCompStatement();
-    if (body == nullptr) {
-        return nullptr;
-    }
     if (expectEndToken) {
         if (currentLexerToken != Lexer::TOK_END) {
-            logError("expected \"end\"");
-            return nullptr;
+            throw ParseException("expected \"end\"");
         }
     } else {
         if (currentLexerToken != Lexer::TOK_BRACE_RIGHT) {
-            logError("expected \"}\"");
-            return nullptr;
+            throw ParseException("expected \"}\"");
         }
     }
     nextLexerToken();
     return new AST::FunctionDef(std::string(), args, nullptr, body);
 }
 
-bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy) {
+void Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy) {
     bool blockPresent = false;
     bool variadicPresent = false;
     bool enteredParametrizedFunctions = false;
@@ -866,8 +740,7 @@ bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
         if (currentLexerToken == Lexer::TOK_OP) {
             if (queue->getOperation() == AST::LEX_OP_STAR) {
                 if (variadicPresent) {
-                    logError("unexpected second variadic");
-                    return false;
+                    throw ParseException("unexpected second variadic");
                 }
                 variadicPresent = true;
                 if (enteredParametrizedFunctions) {
@@ -876,15 +749,13 @@ bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
                 nextLexerToken();
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                    logError("expected identifier");
-                    return false;
+                    throw ParseException("expected identifier");
                 }
                 args.push_back(new AST::FuncDefArg(
                         queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
             } else if (queue->getOperation() == AST::BIN_OP_BIN_AND) {
                 if (blockPresent) {
-                    logError("unexpected second block");
-                    return false;
+                    throw ParseException("unexpected second block");
                 }
                 blockPresent = true;
                 if (enteredParametrizedFunctions) {
@@ -893,15 +764,13 @@ bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
                 nextLexerToken();
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
-                    logError("expected identifier");
-                    return false;
+                    throw ParseException("expected identifier");
                 }
                 args.push_back(new AST::FuncDefArg(
                         queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
                 nextLexerToken(true);
             } else {
-                logError("unexpected token");
-                return false;
+                throw ParseException("unexpected token");
             }
         } else {
             if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
@@ -913,30 +782,20 @@ bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
                 nextLexerToken(true);
                 skipTerms();
                 auto val = parseStatement();
-                if (val == nullptr) {
-                    logError("expected statement");
-                    return false;
-                }
                 args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_MAP));
             } else {
                 skipSpaces();
                 if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_ASSIGN) {
                     if (exitedParametrizedFunctions) {
-                        logError("parameters with default values must be declared next to each other");
-                        return false;
+                        throw ParseException("parameters with default values must be declared next to each other");
                     }
                     if (variadicPresent) {
-                        logError("parameters with default values must come before variadic");
-                        return false;
+                        throw ParseException("parameters with default values must come before variadic");
                     }
                     enteredParametrizedFunctions = true;
                     nextLexerToken(true);
                     skipTerms();
                     auto val = parseStatement();
-                    if (val == nullptr) {
-                        logError("expected statement");
-                        return false;
-                    }
                     args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_NORMAL));
                 } else {
                     if (enteredParametrizedFunctions) {
@@ -957,7 +816,6 @@ bool Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
         }
         nextLexerToken();
     }
-    return true;
 }
 
 Lexer::TokenType Parser::nextLexerToken(bool skipSpacesF) {
@@ -980,32 +838,21 @@ AST::Statement *Parser::parseBinOpRight(AST::Statement *left, int precedence) {
         }
         auto operation = convertToBinOp(queue->getOperation());
         if (operation == AST::OP_UNKNOWN) {
-            logError("expected binary operation");
-            return nullptr;
+            throw ParseException("expected binary operation");
         }
         if (operation == AST::BIN_OP_QUESTION) {
             nextLexerToken();
             auto trueBranch = parseStatement(precedence + 1);
-            if (trueBranch == nullptr) {
-                return nullptr;
-            }
             if (currentLexerToken != Lexer::TOK_COLON) {
-                logError("expected \":\"");
-                return nullptr;
+                throw ParseException("expected \":\"");
             }
             nextLexerToken();
             auto falseBranch = parseStatement(precedence + 1);
-            if (falseBranch == nullptr) {
-                return nullptr;
-            }
             left = new AST::If(left, trueBranch, falseBranch);
             continue;
         }
         nextLexerToken(true);
         auto right = parsePrimary();
-        if (right == nullptr) {
-            return nullptr;
-        }
         skipSpaces();
         int nextOpPred = 0;
         if (currentLexerToken == Lexer::TOK_OP) {
@@ -1081,7 +928,7 @@ int Parser::getOpPrecedence(AST::OperationType type) {
     if (precedences.contains(type)) {
         return precedences.at(type);
     }
-    return 0;
+    throw ParseException("unknown operation");
 }
 
 AST::OperationType Parser::convertToBinOp(AST::OperationType type) {
@@ -1106,15 +953,10 @@ AST::OperationType Parser::convertToUnOp(AST::OperationType type) {
     } else if (type == AST::LEX_OP_PLUS) {
         return AST::UN_OP_POSITIVE;
     } else if (type < AST::UN_OP_REGION_START || type > AST::UN_OP_REGION_END) {
-        return AST::OP_UNKNOWN;
+        throw ParseException("unknown operation");
     } else {
         return type;
     }
-}
-
-Lexer::TokenType Parser::prevLexerToken() {
-    currentLexerToken = queue->getPrevToken();
-    return currentLexerToken;
 }
 
 Lexer::TokenType Parser::rewindTo(int ptr) {
@@ -1130,7 +972,7 @@ std::string Parser::parseFunctionName() {
     if (currentLexerToken == Lexer::TOK_AT_SIGN) {
         nextLexerToken();
         if (currentLexerToken != Lexer::TOK_OP) {
-            return "";
+            throw ParseException("expected \"+\", or \"-\"");
         }
         switch (queue->getOperation()) {
             case AST::LEX_OP_PLUS: {
@@ -1142,7 +984,7 @@ std::string Parser::parseFunctionName() {
                 return "@-";
             }
             default:
-                return "";
+                throw ParseException("expected \"+\", or \"-\"");
         }
     }
     if (currentLexerToken == Lexer::TOK_OP) {
@@ -1191,9 +1033,23 @@ std::string Parser::parseFunctionName() {
                 return "-";
             case AST::LEX_OP_STAR:
                 return "*";
+            default:
+                throw ParseException("expected function name");
         }
     }
-    return "";
+    if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
+        nextLexerToken();
+        if (currentLexerToken == Lexer::TOK_BRACKET_RIGHT) {
+            nextLexerToken();
+            if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_ASSIGN) {
+                nextLexerToken();
+                return "[]=";
+            } else {
+                return "[]";
+            }
+        }
+    }
+    throw ParseException("expected function name");
 }
 
 AST::Statement *Parser::parseFunctionDef() {
@@ -1201,9 +1057,7 @@ AST::Statement *Parser::parseFunctionDef() {
     skipTerms();
     AST::Statement *singleton(nullptr);
     std::string functionName;
-    if (!parseFunctionDefHeader(&functionName, &singleton)) {
-        return nullptr;
-    }
+    parseFunctionDefHeader(&functionName, &singleton);
     skipSpaces();
     bool hasParen = false;
     if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
@@ -1211,32 +1065,31 @@ AST::Statement *Parser::parseFunctionDef() {
         hasParen = true;
     }
     std::vector<AST::FuncDefArg *> args;
-    if (!parseFuncDefArgs(args, hasParen)) {
-        return nullptr;
-    }
+    parseFuncDefArgs(args, hasParen);
     if (hasParen) {
         if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
-            logError("expected \")\"");
-            return nullptr;
+            throw ParseException("expected \")\"");
         }
         nextLexerToken();
     }
     auto body = parseCompStatement();
     if (currentLexerToken != Lexer::TOK_END) {
-        logError("exepcted \"end\"");
-        return nullptr;
+        throw ParseException("exepcted \"end\"");
     }
     nextLexerToken();
     return new AST::FunctionDef(functionName, args, singleton, body);
 }
 
-bool Parser::parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton) {
+void Parser::parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton) {
     int ptr = queue->getPtr();
-    *singleton = parseStatement();
-    if (*singleton == nullptr) {
-        rewindTo(ptr);
+    try {
+        ParseRewindGuard prg(this);
+        *singleton = parseStatement();
+        prg.release();
+    } catch (ParseException &) {
+        *singleton = nullptr;
         *functionName = parseFunctionName();
-        return !functionName->empty();
+        return;
     }
     skipTerms();
     if (currentLexerToken != Lexer::TOK_DOT) {
@@ -1244,18 +1097,20 @@ bool Parser::parseFunctionDefHeader(std::string *functionName, AST::Statement **
         *singleton = nullptr;
         rewindTo(ptr);
         *functionName = parseFunctionName();
-        return !functionName->empty();
+        return;
     }
     nextLexerToken();
     skipTerms();
 
     *functionName = parseFunctionName();
-    return !functionName->empty();
 }
 
 std::string Parser::parseName(bool withEqSign) {
-    std::string name = queue->getStr();
-    nextLexerToken();
+    std::string name;
+    if (currentLexerToken == Lexer::TOK_IDENTIFIER) {
+        name = queue->getStr();
+        nextLexerToken();
+    }
     if (currentLexerToken == Lexer::TOK_OP) {
         switch (queue->getOperation()) {
             case AST::BIN_OP_QUESTION: {
@@ -1270,6 +1125,12 @@ std::string Parser::parseName(bool withEqSign) {
                 if (!withEqSign)break;
                 nextLexerToken();
                 return name + "=";
+            }
+            default: {
+                if (name.empty()) {
+                    throw ParseException("expected name");
+                }
+                return name;
             }
         }
     }

@@ -10,14 +10,14 @@ namespace Lang {
 
 class Class : public Object {
 public:
-    Class(Class *parent, const std::string &name, int size);
-
-    HashInternal &getConsts() {
-        return consts;
-    }
+    Class(Class *parent, std::string name, int size);
 
     const std::string &getName() const {
         return name;
+    }
+
+    HashInternal &getConsts() {
+        return consts;
     }
 
     Class *getParent() const {
@@ -28,11 +28,17 @@ public:
         return instanceSize;
     }
 
+    Object *getConst(Symbol *nameSymbol);
+
+    void setConst(Symbol *nameSymbol, Object *object);
+
 private:
-    HashInternal consts;
     std::string name;
+    HashInternal consts;
     Class *parent;
     int instanceSize;
+
+
 };
 
 } // UltraRuby

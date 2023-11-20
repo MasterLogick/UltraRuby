@@ -105,6 +105,7 @@ bool isOp(int c) {
 void Lexer::emmitToken() {
     if (input->eof()) {
         queue.pushBack(TOK_EOF);
+        return;
     }
     switch (lastChar) {
         case ' ':
@@ -112,7 +113,7 @@ void Lexer::emmitToken() {
             do {
                 lastChar = input->getNextChar();
             } while (lastChar == ' ' || lastChar == '\t');
-            queue.pushBack(TOK_SPACE);
+            queue.pushBack(TOK_SPACES);
             return;
         }
         case '\n':

@@ -8,6 +8,7 @@ namespace Lang {
 
 class BasicClasses {
 public:
+    static Class *RootClass;
     static Class *BasicObjectClass;
     static Class *ObjectClass;
     static Class *ClassClass;

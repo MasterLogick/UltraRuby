@@ -15,6 +15,8 @@ public:
 
     void *get(Object *key);
 
+    bool has(Object *key);
+
     void remove(Object *key);
 
 private:

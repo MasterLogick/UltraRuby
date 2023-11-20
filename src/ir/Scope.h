@@ -21,58 +21,26 @@ class Scope {
 public:
     Scope();
 
-    std::string deriveFunctionName(AST::FunctionDef *functionDef);
+    void enterNewScope();
 
-    void enterFunctionBody(AST::FunctionDef *functionDef);
+    void leaveScope();
 
-    void leaveFunctionBody();
+    void addLocalVariable(const std::string& name, llvm::Value *alloca);
 
-    void addLocalVariable(std::string name, llvm::AllocaInst *alloca);
-
-    llvm::AllocaInst *getLocalVariable(const std::string &name);
-
-    std::string deriveClassDeclFunction(UltraRuby::AST::ClassDef *pDef);
-
-    Lang::Class *getSuperClass(AST::ClassDef *pDef);
-
-    std::string deriveModuleDeclFunction(UltraRuby::AST::ModuleDef *module);
-
-    std::string deriveClassInstanceMethod(UltraRuby::AST::ClassInstanceDef *classInstanceDef);
-
-    Lang::Class **getOrAllocModule(AST::ModuleDef *moduleDef);
-
-    Lang::Class **getOrAllocClass(AST::ClassDef *pDef);
-
-    void markBlockAsTerminated();
+    llvm::Value *getLocalVariable(const std::string &name);
 
     void pushHandlerBlock(llvm::BasicBlock *pBlock);
 
     void popHandlerBlock();
 
-    llvm::BasicBlock *getRescueBlock();
-
-    std::string getFullClassIdentifier(AST::ClassDef *classDef);
-
-    std::string getFullModuleIdentifier(AST::ModuleDef *pDef);
-
-    std::string getFullFunctionIdentifier(AST::FunctionDef *pDef);
-
-    void enterClassDef(AST::ClassDef *classDef);
-
-    void leaveClassDef();
-
-    void enterModuleDef(AST::ModuleDef *moduleDef);
-
-    void leaveModuleDef();
-
-    std::vector<std::string> getModuleScopeStack();
+    llvm::BasicBlock *getHandlerBlock();
 
 private:
     Scope(Scope *outer);
 
     Scope *outer;
-    std::map<std::string, llvm::AllocaInst *> vars;
-    std::deque<llvm::BasicBlock *> deque;
+    std::map<std::string, llvm::Value *> vars;
+    std::deque<llvm::BasicBlock *> handlers;
 };
 
 } // UltraRuby

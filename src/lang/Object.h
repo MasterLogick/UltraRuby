@@ -23,7 +23,9 @@ class Object {
 public:
     static constexpr int ObjectClassOffset = 0;
 
-    explicit Object(Class *objectClass) : objectClass(objectClass) {}
+    explicit Object(Class *objectClass) :
+            objectClass(objectClass),
+            singletonMethods(nullptr) {}
 
     static constexpr int MaxDirectArgsLen = 5;
 
@@ -58,27 +60,16 @@ public:
 
     Object *defineModule(Symbol *nameSymbol, Object *(*definition)(Class *));
 
-    Object *getConst(Symbol *nameSymbol);
-
     Class *getObjectClass() const {
         return objectClass;
     }
 
 private:
-
-    const HashInternal &getSingletonMethods() const {
-        return singletonMethods;
-    }
-
-    const HashInternal &getAdditionalInstanceVariables() const {
-        return additionalInstanceVariables;
-    }
-
     const FunctionDefMeta *findFunction(Symbol *name);
 
     Class *objectClass;
-    HashInternal singletonMethods;
-    HashInternal additionalInstanceVariables;
+    HashInternal *singletonMethods;
+    HashInternal instanceVariables;
 };
 
 } // UltraRuby

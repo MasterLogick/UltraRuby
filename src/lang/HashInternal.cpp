@@ -15,6 +15,10 @@ void *HashInternal::get(Object *key) {
     return impl[key];
 }
 
+bool HashInternal::has(Object *key) {
+    return impl.contains(key);
+}
+
 void HashInternal::remove(Object *key) {
     impl.erase(key);
 }

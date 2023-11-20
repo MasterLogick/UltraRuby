@@ -5,7 +5,7 @@ namespace UltraRuby::Lexer {
 enum TokenType {
     TOK_ERROR = 0,
 
-    TOK_SPACE,
+    TOK_SPACES,
     TOK_EOF,
     TOK_NEWLINE,
 

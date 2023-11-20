@@ -104,6 +104,9 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/ast/DefinitionName.h
         src/ast/LangVariable.h
         src/ast/ConstantRef.h
+        src/parser/ParseException.h
+        src/parser/ParseRewindGuard.cpp
+        src/parser/ParseRewindGuard.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)
