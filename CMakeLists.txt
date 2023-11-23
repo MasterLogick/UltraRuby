@@ -80,13 +80,11 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/ast/ASTClassDecls.h
         src/lang/Array.cpp
         src/lang/Array.h
-        src/lang/ObjectVector.cpp
-        src/lang/ObjectVector.h
         src/lang/Hash.cpp
         src/lang/Hash.h
         src/lang/Module.cpp
         src/lang/Module.h
-        src/ast/FuncDefArg.h
+        src/ast/OptionalArg.h
         src/ast/FunctionDef.cpp
         src/lang/PrimaryConstants.cpp
         src/lang/PrimaryConstants.h

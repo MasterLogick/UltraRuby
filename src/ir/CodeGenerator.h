@@ -165,14 +165,15 @@ private:
     llvm::Function *langClassGetConst;
     llvm::Function *langClassSetConst;
     llvm::Function *langSymbolGet;
-
     llvm::Function *langStringGet;
+
     llvm::Function *cxaBeginCatch;
     llvm::Function *cxaEndCatch;
     llvm::Constant *gxxPersonalityV0;
     llvm::Function *cxaGetExceptionPtr;
-
     llvm::Constant *exceptionTypeInfo;
+
+    llvm::GlobalVariable *currentProc;
 };
 
 } // UltraRuby

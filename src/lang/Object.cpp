@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cassert>
 #include <cstring>
 #include "Object.h"
@@ -14,9 +13,8 @@ namespace Lang {
 template<class...Args>
 using CallType = Object *(*)(Object *, Args...);
 using CallVType = Object *(*)(Object *, int, Object **);
-using CallBVType = Object *(*)(Object *, Object *, int, Object **);
-using CallNVType = Object *(*)(Object *, Object *, int, Object **);
-using CallNBVType = Object *(*)(Object *, Object *, Object *, int, Object **);
+
+thread_local Object *Object::currentProc = nullptr;
 
 struct FunctionDefMeta {
     void *function;
@@ -34,28 +32,30 @@ Object *Object::call(Symbol *name, Args ...oArgs) {
         throw Exception(nullptr);
     }
     if (func->argc == 0xf) {
-        Object *args[CallNumArgs] = {oArgs...};
-        if (func->hasBlock)
-            if (func->hasNamedArgs)
-                return reinterpret_cast<CallNBVType>(func->function)
-                        (this, Hash::allocOnHeap(0, nullptr), PrimaryConstants::NilConst, CallNumArgs, args);
-            else
-                return reinterpret_cast<CallBVType>(func->function)
-                        (this, PrimaryConstants::NilConst, CallNumArgs, args);
-        else if (func->hasNamedArgs)
-            return reinterpret_cast<CallNVType>(func->function)
-                    (this, Hash::allocOnHeap(0, nullptr), CallNumArgs, args);
-        else
-            return reinterpret_cast<CallVType>(func->function)
-                    (this, CallNumArgs, args);
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
+        if (func->hasNamedArgs) {
+            Object *args[CallNumArgs + 1] = {oArgs..., Hash::allocOnHeap(0, nullptr)};
+            retVal = reinterpret_cast<CallVType>(func->function)(this, CallNumArgs, args);
+        } else {
+            Object *args[CallNumArgs] = {oArgs...};
+            retVal = reinterpret_cast<CallVType>(func->function)(this, CallNumArgs, args);
+        }
+        currentProc = savedProc;
+        return retVal;
     } else {
         assert(!func->hasNamedArgs && !func->hasBlock);
         if (func->argc != CallNumArgs) {
             //todo throw wrong number of arguments (given reqArgs, expected CallNumArgs) (ArgumentError)
             throw Exception(nullptr);
         }
-        return reinterpret_cast<CallType<Args...>>(func->function)
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        auto *retVal = reinterpret_cast<CallType<Args...>>(func->function)
                 (this, oArgs...);
+        currentProc = savedProc;
+        return retVal;
     }
 }
 
@@ -78,48 +78,58 @@ Object *Object::callV(Symbol *name, int n, Object **args) {
         throw Exception(nullptr);
     }
     if (func->argc == 0xf) {
-        if (func->hasBlock) {
-            if (func->hasNamedArgs) {
-                return reinterpret_cast<CallNBVType>(func->function)
-                        (this, Hash::allocOnHeap(0, nullptr), PrimaryConstants::NilConst, n, args);
-            } else {
-                auto *args1 = new Object *[n + 1];
-                memcpy(args1, args, n);
-                args1[n] = Hash::allocOnHeap(0, nullptr);
-                return reinterpret_cast<CallBVType>(func->function)(this, PrimaryConstants::NilConst, n + 1, args1);
-            }
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
+        if (func->hasNamedArgs) {
+            auto *args1 = new Object *[n + 1];
+            memcpy(args1, args, n);
+            args1[n] = Hash::allocOnHeap(0, nullptr);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
         } else {
-            assert(func->hasNamedArgs);
-            return reinterpret_cast<CallNVType>(func->function)(this, Hash::allocOnHeap(0, nullptr), n, args);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
         }
+        currentProc = savedProc;
+        return retVal;
     } else {
         if (n != func->argc) {
             //todo throw wrong number of arguments (given n, expected func->argc) (ArgumentError)
             throw Exception(nullptr);
         }
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
         switch (n) {
             case 0:
-                return reinterpret_cast<CallType<>>(func->function)
+                retVal = reinterpret_cast<CallType<>>(func->function)
                         (this);
+                break;
             case 1:
-                return reinterpret_cast<CallType<Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *>>(func->function)
                         (this, args[0]);
+                break;
             case 2:
-                return reinterpret_cast<CallType<Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *>>(func->function)
                         (this, args[0], args[1]);
+                break;
             case 3:
-                return reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2]);
+                break;
             case 4:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2], args[3]);
+                break;
             case 5:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2], args[3], args[4]);
+                break;
             default:
                 std::terminate();
         }
         static_assert(MaxDirectArgsLen == 5, "implement more");
+        currentProc = savedProc;
+        return retVal;
     }
 }
 
@@ -130,48 +140,58 @@ Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
         throw Exception(nullptr);
     }
     if (func->argc == 0xf) {
-        if (func->hasBlock) {
-            if (func->hasNamedArgs) {
-                return reinterpret_cast<CallNBVType>(func->function)(this, Hash::allocOnHeap(0, nullptr), block, n,
-                                                                     args);
-            } else {
-                auto *args1 = new Object *[n + 1];
-                memcpy(args1, args, n);
-                args1[n] = Hash::allocOnHeap(0, nullptr);
-                return reinterpret_cast<CallBVType>(func->function)(this, block, n + 1, args1);
-            }
+        auto *savedProc = currentProc;
+        currentProc = block;
+        Object *retVal;
+        if (func->hasNamedArgs) {
+            auto *args1 = new Object *[n + 1];
+            memcpy(args1, args, n);
+            args1[n] = Hash::allocOnHeap(0, nullptr);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
         } else {
-            assert(func->hasNamedArgs);
-            return reinterpret_cast<CallNVType>(func->function)(this, Hash::allocOnHeap(0, nullptr), n, args);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
         }
+        currentProc = savedProc;
+        return retVal;
     } else {
         if (n != func->argc) {
             //todo throw wrong number of arguments (given n, expected func->argc) (ArgumentError)
             throw Exception(nullptr);
         }
+        auto *savedProc = currentProc;
+        currentProc = block;
+        Object *retVal;
         switch (n) {
             case 0:
-                return reinterpret_cast<CallType<>>(func->function)
+                retVal = reinterpret_cast<CallType<>>(func->function)
                         (this);
+                break;
             case 1:
-                return reinterpret_cast<CallType<Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *>>(func->function)
                         (this, args[0]);
+                break;
             case 2:
-                return reinterpret_cast<CallType<Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *>>(func->function)
                         (this, args[0], args[1]);
+                break;
             case 3:
-                return reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2]);
+                break;
             case 4:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2], args[3]);
+                break;
             case 5:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
                         (this, args[0], args[1], args[2], args[3], args[4]);
+                break;
             default:
                 std::terminate();
         }
         static_assert(MaxDirectArgsLen == 5, "implement more");
+        currentProc = savedProc;
+        return retVal;
     }
 }
 
@@ -182,44 +202,58 @@ Object *Object::callNV(Symbol *name, Hash *namedMap, int n, Object **args) {
         throw Exception(nullptr);
     }
     if (func->argc == 0xf) {
-        if (func->hasBlock) {
-            if (func->hasNamedArgs) {
-                return reinterpret_cast<CallNBVType>(func->function)(this, namedMap, PrimaryConstants::NilConst, n,
-                                                                     args);
-            } else {
-                auto *args1 = new Object *[n + 1];
-                memcpy(args1, args, n);
-                args1[n] = namedMap;
-                return reinterpret_cast<CallBVType>(func->function)(this, PrimaryConstants::NilConst, n + 1, args1);
-            }
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
+        if (func->hasNamedArgs) {
+            auto *args1 = new Object *[n + 1];
+            memcpy(args1, args, n);
+            args1[n] = namedMap;
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
         } else {
-            assert(func->hasNamedArgs);
-            return reinterpret_cast<CallNVType>(func->function)(this, namedMap, n, args);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
         }
+        currentProc = savedProc;
+        return retVal;
     } else {
-        if (n + 1 != func->argc) {
+        if (n != func->argc) {
             //todo throw wrong number of arguments (given n, expected func->argc) (ArgumentError)
             throw Exception(nullptr);
         }
-        switch (n + 1) {
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
+        switch (n) {
+            case 0:
+                retVal = reinterpret_cast<CallType<>>(func->function)
+                        (this);
+                break;
             case 1:
-                return reinterpret_cast<CallType<Object *>>(func->function)
-                        (this, namedMap);
+                retVal = reinterpret_cast<CallType<Object *>>(func->function)
+                        (this, args[0]);
+                break;
             case 2:
-                return reinterpret_cast<CallType<Object *, Object *>>(func->function)
-                        (this, args[0], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *>>(func->function)
+                        (this, args[0], args[1]);
+                break;
             case 3:
-                return reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2]);
+                break;
             case 4:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], args[2], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3]);
+                break;
             case 5:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], args[2], args[3], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3], args[4]);
+                break;
             default:
                 std::terminate();
         }
+        static_assert(MaxDirectArgsLen == 5, "implement more");
+        currentProc = savedProc;
+        return retVal;
     }
 }
 
@@ -230,43 +264,58 @@ Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object
         throw Exception(nullptr);
     }
     if (func->argc == 0xf) {
-        if (func->hasBlock) {
-            if (func->hasNamedArgs) {
-                return reinterpret_cast<CallNBVType>(func->function)(this, namedMap, block, n, args);
-            } else {
-                auto *args1 = new Object *[n + 1];
-                memcpy(args1, args, n);
-                args1[n] = namedMap;
-                return reinterpret_cast<CallBVType>(func->function)(this, block, n + 1, args1);
-            }
+        auto *savedProc = currentProc;
+        currentProc = block;
+        Object *retVal;
+        if (func->hasNamedArgs) {
+            auto *args1 = new Object *[n + 1];
+            memcpy(args1, args, n);
+            args1[n] = namedMap;
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
         } else {
-            assert(func->hasNamedArgs);
-            return reinterpret_cast<CallNVType>(func->function)(this, namedMap, n, args);
+            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
         }
+        currentProc = savedProc;
+        return retVal;
     } else {
-        if (n + 1 != func->argc) {
+        if (n != func->argc) {
             //todo throw wrong number of arguments (given n, expected func->argc) (ArgumentError)
             throw Exception(nullptr);
         }
-        switch (n + 1) {
+        auto *savedProc = currentProc;
+        currentProc = PrimaryConstants::NilConst;
+        Object *retVal;
+        switch (n) {
+            case 0:
+                retVal = reinterpret_cast<CallType<>>(func->function)
+                        (this);
+                break;
             case 1:
-                return reinterpret_cast<CallType<Object *>>(func->function)
-                        (this, namedMap);
+                retVal = reinterpret_cast<CallType<Object *>>(func->function)
+                        (this, args[0]);
+                break;
             case 2:
-                return reinterpret_cast<CallType<Object *, Object *>>(func->function)
-                        (this, args[0], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *>>(func->function)
+                        (this, args[0], args[1]);
+                break;
             case 3:
-                return reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2]);
+                break;
             case 4:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], args[2], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3]);
+                break;
             case 5:
-                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
-                        (this, args[0], args[1], args[2], args[3], namedMap);
+                retVal = reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3], args[4]);
+                break;
             default:
                 std::terminate();
         }
+        static_assert(MaxDirectArgsLen == 5, "implement more");
+        currentProc = savedProc;
+        return retVal;
     }
 }
 

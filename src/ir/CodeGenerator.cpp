@@ -102,9 +102,13 @@ llvm::Function *CodeGenerator::codegenFunctionInternal(AST::FunctionDef *functio
         logError("function redeclaration");
         return nullptr;
     }
-    auto args = functionDef->getArgs();
-    std::vector<llvm::Type *> argTypes(4, voidpTy);
-    auto *ft = llvm::FunctionType::get(voidpTy, argTypes, false);
+    int argc = functionDef->getArgc();
+    llvm::FunctionType *ft;
+    if (argc == -1) {
+        ft = llvm::FunctionType::get(voidpTy, {voidpTy, builder->getInt32Ty(), voidpTy}, false);
+    } else {
+        ft = llvm::FunctionType::get(voidpTy, std::vector<llvm::Type *>(argc + 1, voidpTy), false);
+    }
     func = llvm::Function::Create(ft, llvm::Function::PrivateLinkage, functionDef->getName(), *module);
     auto *bb = llvm::BasicBlock::Create(*context, "entry", func);
     builder->SetInsertPoint(bb);
@@ -237,9 +241,9 @@ const std::map<AST::OperationType, std::string> ops = {
         {AST::BIN_OP_XOR,                "^"},
         {AST::BIN_OP_LEFT_SHIFT,         "<<"},
         {AST::BIN_OP_RIGHT_SHIFT,        ">>"},
-        {AST::LEX_OP_PLUS,               "+"},
-        {AST::LEX_OP_MINUS,              "-"},
-        {AST::LEX_OP_STAR,               "*"},
+        {AST::BIN_OP_ADD,                "+"},
+        {AST::BIN_OP_ADD,                "-"},
+        {AST::BIN_OP_MULTIPLY,           "*"},
         {AST::BIN_OP_DIVIDE,             "/"},
         {AST::BIN_OP_MOD,                "%"},
         {AST::BIN_OP_POWER,              "**"},
@@ -453,6 +457,9 @@ void CodeGenerator::declareExternLangFunctions() {
                                           "_ZN9UltraRuby4Lang16PrimaryConstants10FalseConstE");
     rootClass = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
                                          "_ZN9UltraRuby4Lang12BasicClasses9RootClassE");
+    currentProc = new llvm::GlobalVariable(*module, voidpTy, false, llvm::GlobalValue::ExternalLinkage, nullptr,
+                                           "_ZN9UltraRuby4Lang6Object11currentProcE", nullptr,
+                                           llvm::GlobalValue::GeneralDynamicTLSModel);
 }
 
 void CodeGenerator::debugPrintModuleIR() {
@@ -461,105 +468,202 @@ void CodeGenerator::debugPrintModuleIR() {
 
 bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func) {
     auto argsBegin = func->arg_begin();
-    auto argsEnd = func->arg_end();
+    {
+        auto selfArg = argsBegin;
+        auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_alloca");
+        builder->CreateStore(selfArg, selfAlloca);
+        scope->addLocalVariable("self", selfAlloca);
+        selfArg->setName("self");
 
-    auto selfArg = argsBegin;
-    auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_alloca");
-    builder->CreateStore(selfArg, selfAlloca);
-    scope->addLocalVariable("self", selfAlloca);
-    selfArg->setName("self");
-
-    argsBegin++;
-    if (functionDef->hasBlockArg()) {
-        argsEnd--;
-        auto *blockArg = argsEnd;
-        blockArg->setName("blockArg");
-        auto *blockAlloca = builder->CreateAlloca(voidpTy, nullptr,
-                                                  functionDef->getBlockArg()->getName() + "_alloca");
-        builder->CreateStore(blockArg, blockAlloca);
-        scope->addLocalVariable(functionDef->getBlockArg()->getName(), blockAlloca);
+        argsBegin++;
     }
 
-    llvm::Argument *mapArg = nullptr;
-    if (functionDef->hasNamedArgs()) {
-        argsEnd--;
-        mapArg = argsEnd;
-        mapArg->setName("mapArg");
-    }
+    if (functionDef->getArgc() == -1) {
+        auto argcArg = argsBegin;
+        argcArg->setName("argc");
+        auto argvArray = argsBegin + 1;
+        argvArray->setName("argv");
 
-    for (const auto &arg: functionDef->getArgs()) {
-        switch (arg->getType()) {
-            case AST::FuncDefArg::AST_ARG_TYPE_NORMAL: {
-                auto *funcArgValue = argsBegin;
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");
-                funcArgValue->setName(arg->getName() + "_arg");
-                if (arg->getDefaultValue() == nullptr) {
-                    builder->CreateStore(funcArgValue, argAlloca);
-                } else {
-                    auto *cond = builder->CreateICmpNE(funcArgValue, codegenPointer(nullptr),
-                                                       "arg_" + arg->getName() + "_isPassed");
-                    auto *curBlock = builder->GetInsertBlock();
-                    auto *falseBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_useDefault",
-                                                                 func);
-                    auto *merge = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_merge", func);
-                    builder->CreateCondBr(cond, merge, falseBranch);
+        if (!functionDef->getRequiredArgsPrefix().empty() || !functionDef->getRequiredArgsSuffix().empty()) {
+            auto *minArgcPassed =
+                    builder->CreateICmpUGE(argcArg, builder->getInt32(
+                                                   functionDef->getRequiredArgsPrefix().size() +
+                                                   functionDef->getRequiredArgsSuffix().size()),
+                                           "minArgcPassed");
+            auto *failed = llvm::BasicBlock::Create(*context, "minArgsRequirementFailed", func);
+            auto *passed = llvm::BasicBlock::Create(*context, "minArgsRequirementSatisfied", func);
+            builder->CreateCondBr(minArgcPassed, passed, failed);
+            builder->SetInsertPoint(failed);
+            //todo throw exception wrong number of arguments (given argc, expected n) (ArgumentError)
+            builder->CreateUnreachable();
+            builder->SetInsertPoint(passed);
+        }
 
-                    builder->SetInsertPoint(falseBranch);
-                    auto *defaultVal = codegenStatement(arg->getDefaultValue());
-                    falseBranch = builder->GetInsertBlock();
-                    builder->CreateBr(merge);
+        if (functionDef->getVariadicArg().empty()) {
+            auto *maxArgcPassed =
+                    builder->CreateICmpULE(argcArg, builder->getInt32(
+                                                   functionDef->getRequiredArgsPrefix().size() +
+                                                   functionDef->getOptionalArgs().size() +
+                                                   functionDef->getRequiredArgsSuffix().size()),
+                                           "maxArgcPassed");
+            auto *failed = llvm::BasicBlock::Create(*context, "maxArgsRequirementFailed", func);
+            auto *passed = llvm::BasicBlock::Create(*context, "maxArgsRequirementSatisfied", func);
+            builder->CreateCondBr(maxArgcPassed, passed, failed);
+            builder->SetInsertPoint(failed);
+            //todo throw exception wrong number of arguments (given argc, expected n) (ArgumentError)
+            builder->CreateUnreachable();
+            builder->SetInsertPoint(passed);
+        }
 
-                    builder->SetInsertPoint(merge);
-                    auto *argValPhi = builder->CreatePHI(voidpTy, 2, "arg_" + arg->getName() + "_phi");
-                    argValPhi->addIncoming(funcArgValue, curBlock);
-                    argValPhi->addIncoming(defaultVal, falseBranch);
-                    builder->CreateStore(argValPhi, argAlloca);
+        if (!functionDef->getBlockArg().empty()) {
+            auto *blockAlloca = builder->CreateAlloca(voidpTy, nullptr,
+                                                      functionDef->getBlockArg() + "_alloca");
+            auto *varPtr = builder->CreateThreadLocalAddress(currentProc);
+            scope->addLocalVariable(functionDef->getBlockArg(), varPtr);
+        }
+
+        llvm::Value *namedArgsMap = nullptr;
+        if (!functionDef->getNamedArgs().empty()) {
+            auto *namedArgsMapPtr = builder->CreateGEP(voidpTy, argvArray, {argcArg}, "namedArgsMapPtr");
+            namedArgsMap = builder->CreateLoad(voidpTy, namedArgsMapPtr, "namedArgsMap");
+        }
+
+
+        {
+            int i = 0;
+            for (const auto &argName: functionDef->getRequiredArgsPrefix()) {
+                auto *argPtr = builder->CreateGEP(voidpTy, argvArray, {builder->getInt32(i)}, argName + "_ptr");
+                scope->addLocalVariable(argName, argPtr);
+                i++;
+            }
+        }
+        {
+            int i = functionDef->getRequiredArgsSuffix().size();
+            for (const auto &argName: functionDef->getRequiredArgsSuffix()) {
+                auto *pos = builder->CreateSub(argcArg, builder->getInt32(i));
+                auto *argPtr = builder->CreateGEP(voidpTy, argvArray, {pos}, argName + "_ptr");
+                scope->addLocalVariable(argName, argPtr);
+                i--;
+            }
+        }
+
+        if (!functionDef->getOptionalArgs().empty()) {
+            for (const auto &defArg: functionDef->getOptionalArgs()) {
+                scope->addLocalVariable(defArg->getName(),
+                                        builder->CreateAlloca(voidpTy, nullptr, defArg->getName() + "_alloca"));
+            }
+            int n = functionDef->getRequiredArgsPrefix().size() + functionDef->getRequiredArgsSuffix().size() + 1;
+            int i = functionDef->getRequiredArgsPrefix().size();
+            llvm::BasicBlock *prevAbsent = nullptr;
+            for (const auto &defArg: functionDef->getOptionalArgs()) {
+                auto *present = llvm::BasicBlock::Create(*context, "arg_" + defArg->getName() + "_present", func);
+                auto *absent = llvm::BasicBlock::Create(*context, "arg_" + defArg->getName() + "_absent", func);
+                auto *optArgPresent = builder->CreateICmpUGE(argcArg, builder->getInt32(n));
+                builder->CreateCondBr(optArgPresent, present, absent);
+
+                auto *alloca = scope->getLocalVariable(defArg->getName());
+                assert(alloca && "must be already allocated");
+
+                if (prevAbsent) {
+                    builder->SetInsertPoint(prevAbsent);
+                    builder->CreateBr(absent);
                 }
+
+                {
+                    builder->SetInsertPoint(absent);
+                    assert(defArg->getDefaultValue() && "optional args must have default value");
+                    auto *v = codegenStatement(defArg->getDefaultValue());
+                    builder->CreateStore(v, alloca);
+                    prevAbsent = builder->GetInsertBlock();
+                }
+
+                {
+                    builder->SetInsertPoint(present);
+                    auto *argPtr = builder->CreateGEP(voidpTy, argvArray, {builder->getInt32(i)},
+                                                      defArg->getName() + "_ptr");
+                    builder->CreateStore(builder->CreateLoad(voidpTy, argPtr), alloca);
+                }
+                n++;
+                i++;
+            }
+
+            auto *merge = llvm::BasicBlock::Create(*context, "optionArgsMerge", func);
+            builder->CreateBr(merge);
+            builder->SetInsertPoint(prevAbsent);
+            builder->CreateBr(merge);
+            builder->SetInsertPoint(merge);
+        }
+
+        if (!functionDef->getVariadicArg().empty()) {
+            auto *variadicAlloca = builder->CreateAlloca(voidpTy, nullptr, functionDef->getVariadicArg() + "_alloca");
+            scope->addLocalVariable(functionDef->getVariadicArg(), variadicAlloca);
+
+            auto *variadicPresent = builder->CreateICmpUGT(argcArg, builder->getInt32(
+                    functionDef->getRequiredArgsPrefix().size() +
+                    functionDef->getOptionalArgs().size() +
+                    functionDef->getRequiredArgsSuffix().size()), "variadicPresent");
+            auto *present = llvm::BasicBlock::Create(*context, "variadicPresent", func);
+            auto *merge = llvm::BasicBlock::Create(*context, "variadicMerge", func);
+            auto *prevBlock = builder->GetInsertBlock();
+            builder->CreateCondBr(variadicPresent, present, merge);
+            builder->SetInsertPoint(present);
+            auto *variadicPresentLength = builder->CreateSub(argcArg, builder->getInt32(
+                    functionDef->getRequiredArgsPrefix().size() +
+                    functionDef->getOptionalArgs().size() +
+                    functionDef->getRequiredArgsSuffix().size()), "variadicPresentSize");
+            builder->CreateBr(merge);
+            builder->SetInsertPoint(merge);
+            auto *phi = builder->CreatePHI(builder->getInt32Ty(), 2, "variadicSize");
+            phi->addIncoming(builder->getInt32(0), prevBlock);
+            phi->addIncoming(variadicPresentLength, present);
+            auto *variadicOffset = builder->CreateGEP(voidpTy, argvArray, {
+                    builder->getInt32(functionDef->getRequiredArgsPrefix().size() +
+                                      functionDef->getOptionalArgs().size())}, "variadicOffset");
+            auto *array = codegenLangCall(langArrayAlloc, {phi, variadicOffset});
+            builder->CreateStore(array, variadicAlloca);
+        }
+        if (!functionDef->getNamedArgs().empty()) {
+            for (const auto &arg: functionDef->getNamedArgs()) {
+                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");;
                 scope->addLocalVariable(arg->getName(), argAlloca);
-                argsBegin++;
-                break;
-            }
-            case AST::FuncDefArg::AST_ARG_TYPE_VARIADIC: {
-                auto *funcArgValue = argsBegin;
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");
-                funcArgValue->setName(arg->getName() + "VariadicArg");
-                builder->CreateStore(funcArgValue, argAlloca);
-                scope->addLocalVariable(arg->getName(), argAlloca);
-                argsBegin++;
-                break;
-            }
-            case AST::FuncDefArg::AST_ARG_TYPE_BLOCK: {
-                logError("unpredicted second block arg");
-                return false;
-            }
-            case AST::FuncDefArg::AST_ARG_TYPE_MAP: {
+
                 auto *val = codegenLangCall(langObjectCall[1], std::vector<llvm::Value *>{
-                        mapArg, codegenSymbol("has_key?"), codegenSymbol(arg->getName())
+                        namedArgsMap, codegenSymbol("has_key?"), codegenSymbol(arg->getName())
                 });
                 auto *hasKey = codegenCastToBoolInt1(val);
                 auto *trueBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_provided", func);
-                auto *falseBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_useDefault", func);
+                auto *falseBranch = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_useDefault",
+                                                             func);
                 auto *merge = llvm::BasicBlock::Create(*context, "arg_" + arg->getName() + "_merge", func);
                 builder->CreateCondBr(hasKey, trueBranch, falseBranch);
+
                 builder->SetInsertPoint(trueBranch);
                 auto *externalVal = codegenLangCall(langObjectCall[1], std::vector<llvm::Value *>{
-                        mapArg, codegenSymbol("[]"), codegenSymbol(arg->getName())
+                        namedArgsMap, codegenSymbol("[]"), codegenSymbol(arg->getName())
                 });
-                trueBranch = builder->GetInsertBlock();
+                builder->CreateStore(externalVal, argAlloca);
                 builder->CreateBr(merge);
+
                 builder->SetInsertPoint(falseBranch);
-                auto *defaultVal = codegenStatement(arg->getDefaultValue());
-                falseBranch = builder->GetInsertBlock();
-                builder->CreateBr(merge);
+                if (arg->getDefaultValue()) {
+                    auto *defaultVal = codegenStatement(arg->getDefaultValue());
+                    builder->CreateStore(defaultVal, argAlloca);
+                    builder->CreateBr(merge);
+                } else {
+                    //todo throw missing keyword: :arg_name (ArgumentError)
+                    builder->CreateUnreachable();
+                }
                 builder->SetInsertPoint(merge);
-                auto *phi = builder->CreatePHI(voidpTy, 2, "arg_" + arg->getName() + "_phi");
-                phi->addIncoming(externalVal, trueBranch);
-                phi->addIncoming(defaultVal, falseBranch);
-                auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");;
-                builder->CreateStore(phi, argAlloca);
-                scope->addLocalVariable(arg->getName(), argAlloca);
-                break;
             }
+            //todo check for unknown keys
+        }
+    } else {
+        for (const auto &defArg: functionDef->getRequiredArgsPrefix()) {
+            auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, defArg + "_alloca");
+            builder->CreateStore(argsBegin, argAlloca);
+            argsBegin->setName(defArg);
+            scope->addLocalVariable(defArg, argAlloca);
+            argsBegin++;
         }
     }
     return true;
@@ -715,8 +819,7 @@ llvm::Value *CodeGenerator::codegenClassDef(AST::ClassDef *classDef) {
         }
     }
 
-    AST::FunctionDef functionDef("classDef:" + name + std::to_string(suffix++),
-                                 std::vector<AST::FuncDefArg *>(), nullptr, classDef->getDefinition());
+    AST::FunctionDef functionDef("classDef:" + name + std::to_string(suffix++), classDef->getDefinition());
     scope->enterNewScope();
     auto *func = codegenFunctionInternal(&functionDef);
     scope->leaveScope();
@@ -767,8 +870,7 @@ llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
         }
     }
 
-    AST::FunctionDef functionDef("moduleDef:" + name + std::to_string(suffix++),
-                                 std::vector<AST::FuncDefArg *>(), nullptr, moduleDef->getDefinition());
+    AST::FunctionDef functionDef("moduleDef:" + name + std::to_string(suffix++), moduleDef->getDefinition());
     scope->enterNewScope();
     auto *func = codegenFunctionInternal(&functionDef);
     scope->leaveScope();
@@ -778,10 +880,12 @@ llvm::Value *CodeGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
 }
 
 llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
-    AST::FunctionDef function("func:" + functionDef->getName(), functionDef->getArgs(),
-                              functionDef->getSingleton(), functionDef->getBody());
+    AST::FunctionDef function("func:" + functionDef->getName(), functionDef->getBody(),
+                              functionDef->getRequiredArgsPrefix(), functionDef->getOptionalArgs(),
+                              functionDef->getVariadicArg(), functionDef->getRequiredArgsSuffix(),
+                              functionDef->getNamedArgs(), functionDef->getBlockArg(), functionDef->getSingleton());
     scope->enterNewScope();
-    auto *func = codegenFunctionInternal(functionDef);
+    auto *func = codegenFunctionInternal(&function);
     scope->leaveScope();
     if (func == nullptr) {
         return nullptr;
@@ -794,8 +898,8 @@ llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
     }
     std::vector<llvm::Value *> args{self, codegenSymbol(functionDef->getName()), func,
                                     builder->getInt32(functionDef->getArgc()),
-                                    builder->getInt1(functionDef->hasBlockArg()),
-                                    builder->getInt1(functionDef->hasNamedArgs())};
+                                    builder->getInt1(!functionDef->getBlockArg().empty()),
+                                    builder->getInt1(!functionDef->getNamedArgs().empty())};
     if (functionDef->getSingleton() != nullptr) {
         return codegenLangCall(langObjectDefineSingletonMethod, args);
     } else {
@@ -830,9 +934,7 @@ llvm::Value *CodeGenerator::codegenWhile(AST::While *whileAst) {
 }
 
 llvm::Value *CodeGenerator::codegenClassInstanceDef(AST::ClassInstanceDef *classInstanceDef) {
-    AST::FunctionDef functionDef("classInstance:" + std::to_string(suffix++),
-                                 std::vector<AST::FuncDefArg *>(),
-                                 nullptr, classInstanceDef->getDefinition());
+    AST::FunctionDef functionDef("classInstance:" + std::to_string(suffix++), classInstanceDef->getDefinition());
     auto *func = codegenFunctionInternal(&functionDef);
     std::vector<llvm::Value *> callArgs{codegenStatement(classInstanceDef->getInstance()), func};
     return codegenLangCall(langObjectDefineClassInstance, callArgs);

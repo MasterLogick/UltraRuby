@@ -56,6 +56,8 @@ public:
         return singletonMethods;
     }
 
+    static thread_local Object *currentProc;
+
 protected:
     const void *findFunction(Symbol *name);
 

@@ -4,7 +4,7 @@
 #include <map>
 #include "../lexer/Lexer.h"
 #include "../ast/ASTClassDecls.h"
-#include "../ast/FuncDefArg.h"
+#include "../ast/OptionalArg.h"
 
 namespace UltraRuby {
 namespace Parser {
@@ -170,7 +170,8 @@ private:
      *     ::= identifier : statement
      * @return
      */
-    void parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy);
+    std::tuple<std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string,
+            std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string>  parseFuncDefArgs(bool greedy);
 
     /**
      * name ::= identifier

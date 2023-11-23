@@ -702,10 +702,11 @@ AST::FunctionDef *Parser::parseLambdaBlock() {
     }
     nextLexerToken();
     skipTerms();
-    std::vector<AST::FuncDefArg *> args;
+    std::tuple<std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string,
+            std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string> args;
     if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_BIN_OR) {
         nextLexerToken();
-        parseFuncDefArgs(args, true);
+        args = parseFuncDefArgs(true);
         if (currentLexerToken != Lexer::TOK_OP || queue->getOperation() != AST::BIN_OP_BIN_OR) {
             throw ParseException("expected \"|\"");
         }
@@ -722,52 +723,61 @@ AST::FunctionDef *Parser::parseLambdaBlock() {
         }
     }
     nextLexerToken();
-    return new AST::FunctionDef(std::string(), args, nullptr, body);
+    return new AST::FunctionDef("", body,
+                                std::get<0>(args),
+                                std::get<1>(args),
+                                std::get<2>(args),
+                                std::get<3>(args),
+                                std::get<4>(args),
+                                std::get<5>(args),
+                                nullptr);
 }
 
-void Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy) {
-    bool blockPresent = false;
-    bool variadicPresent = false;
-    bool enteredParametrizedFunctions = false;
-    bool exitedParametrizedFunctions = false;
-    int pos = 0;
+std::tuple<std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string,
+        std::vector<std::string>, std::vector<AST::OptionalArg *>, std::string> Parser::parseFuncDefArgs(bool greedy) {
+    std::vector<std::string> requiredArgsPrefix;
+    std::vector<AST::OptionalArg *> optionalArgs;
+    std::string variadicArg;
+    std::vector<std::string> requiredArgsSuffix;
+    std::vector<AST::OptionalArg *> namedArgs;
+    std::string blockArg;
+
+    // 0 - required prefix
+    // 1 - optional
+    // 2 - variadic
+    // 3 - required suffix
+    // 4 - named args
+    int stage = 0;
     while (true) {
         if (greedy) {
             skipTerms();
         } else {
             skipSpaces();
         }
+
         if (currentLexerToken == Lexer::TOK_OP) {
-            if (queue->getOperation() == AST::LEX_OP_STAR) {
-                if (variadicPresent) {
+            if (queue->getOperation() == AST::LEX_OP_STAR && stage < 2) {
+                if (!variadicArg.empty()) {
                     throw ParseException("unexpected second variadic");
                 }
-                variadicPresent = true;
-                if (enteredParametrizedFunctions) {
-                    exitedParametrizedFunctions = true;
-                }
+                stage = 3;
                 nextLexerToken();
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
                     throw ParseException("expected identifier");
                 }
-                args.push_back(new AST::FuncDefArg(
-                        queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
+                variadicArg = queue->getStr();
+                nextLexerToken(true);
             } else if (queue->getOperation() == AST::BIN_OP_BIN_AND) {
-                if (blockPresent) {
+                if (!blockArg.empty()) {
                     throw ParseException("unexpected second block");
                 }
-                blockPresent = true;
-                if (enteredParametrizedFunctions) {
-                    exitedParametrizedFunctions = true;
-                }
                 nextLexerToken();
                 skipTerms();
                 if (currentLexerToken != Lexer::TOK_IDENTIFIER) {
                     throw ParseException("expected identifier");
                 }
-                args.push_back(new AST::FuncDefArg(
-                        queue->getStr(), pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_VARIADIC));
+                blockArg = queue->getStr();
                 nextLexerToken(true);
             } else {
                 throw ParseException("unexpected token");
@@ -779,33 +789,42 @@ void Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
             std::string label = queue->getStr();
             nextLexerToken();
             if (currentLexerToken == Lexer::TOK_COLON) {
+                stage = 4;
                 nextLexerToken(true);
                 skipTerms();
-                auto val = parseStatement();
-                args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_MAP));
+                try {
+                    ParseRewindGuard prg(this);
+                    auto val = parseStatement();
+                    prg.release();
+                    namedArgs.push_back(new AST::OptionalArg(std::move(label), val));
+                } catch (ParseException &e) {
+                    namedArgs.push_back(new AST::OptionalArg(std::move(label), nullptr));
+                }
             } else {
                 skipSpaces();
                 if (currentLexerToken == Lexer::TOK_OP && queue->getOperation() == AST::BIN_OP_ASSIGN) {
-                    if (exitedParametrizedFunctions) {
-                        throw ParseException("parameters with default values must be declared next to each other");
-                    }
-                    if (variadicPresent) {
+                    if (stage > 1) {
                         throw ParseException("parameters with default values must come before variadic");
                     }
-                    enteredParametrizedFunctions = true;
+                    stage = 1;
                     nextLexerToken(true);
                     skipTerms();
                     auto val = parseStatement();
-                    args.push_back(new AST::FuncDefArg(label, pos, val, AST::FuncDefArg::AST_ARG_TYPE_NORMAL));
+                    optionalArgs.push_back(new AST::OptionalArg(std::move(label), val));
                 } else {
-                    if (enteredParametrizedFunctions) {
-                        exitedParametrizedFunctions = true;
+                    if (!optionalArgs.empty() || !variadicArg.empty() || !namedArgs.empty()) {
+                        if (stage > 3) {
+                            throw ParseException("required parameters come before named args");
+                        } else {
+                            stage = 3;
+                        }
+                        requiredArgsSuffix.push_back(std::move(label));
+                    } else {
+                        requiredArgsPrefix.push_back(std::move(label));
                     }
-                    args.push_back(new AST::FuncDefArg(label, pos, nullptr, AST::FuncDefArg::AST_ARG_TYPE_NORMAL));
                 }
             }
         }
-        pos++;
         if (greedy) {
             skipTerms();
         } else {
@@ -816,6 +835,12 @@ void Parser::parseFuncDefArgs(std::vector<AST::FuncDefArg *> &args, bool greedy)
         }
         nextLexerToken();
     }
+    return std::make_tuple(std::move(requiredArgsPrefix),
+                           std::move(optionalArgs),
+                           std::move(variadicArg),
+                           std::move(requiredArgsSuffix),
+                           std::move(namedArgs),
+                           std::move(blockArg));
 }
 
 Lexer::TokenType Parser::nextLexerToken(bool skipSpacesF) {
@@ -1064,8 +1089,7 @@ AST::Statement *Parser::parseFunctionDef() {
         nextLexerToken();
         hasParen = true;
     }
-    std::vector<AST::FuncDefArg *> args;
-    parseFuncDefArgs(args, hasParen);
+    auto args = parseFuncDefArgs(hasParen);
     if (hasParen) {
         if (currentLexerToken != Lexer::TOK_PAREN_RIGHT) {
             throw ParseException("expected \")\"");
@@ -1077,7 +1101,14 @@ AST::Statement *Parser::parseFunctionDef() {
         throw ParseException("exepcted \"end\"");
     }
     nextLexerToken();
-    return new AST::FunctionDef(functionName, args, singleton, body);
+    return new AST::FunctionDef(functionName, body,
+                                std::get<0>(args),
+                                std::get<1>(args),
+                                std::get<2>(args),
+                                std::get<3>(args),
+                                std::get<4>(args),
+                                std::get<5>(args),
+                                singleton);
 }
 
 void Parser::parseFunctionDefHeader(std::string *functionName, AST::Statement **singleton) {

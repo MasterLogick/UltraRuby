@@ -67,6 +67,9 @@ end
 T.new[T.new]+=T.new.b
 T.new.a*=5
 
+def test(a,b,c,d=1,e="wddwadwadwa", *argse,r,t,y,q:1,w:,u:1+2)
+end
+
 )");
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);
     auto parser = std::make_shared<Parser::Parser>(lexer->getQueue());
@@ -78,7 +81,7 @@ T.new.a*=5
         return -1;
     }
     IR::CodeGenerator codeGenerator;
-    auto topLevel = new AST::FunctionDef("top_required", std::vector<AST::FuncDefArg *>(), nullptr, block);
+    auto topLevel = new AST::FunctionDef("top_required", block);
     codeGenerator.codegenProgram(topLevel);
     codeGenerator.debugPrintModuleIR();
 
