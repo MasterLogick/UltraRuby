@@ -153,9 +153,6 @@ private:
     llvm::Function *langArrayAlloc;
     llvm::Function *langHashAlloc;
     llvm::Function *langObjectCall[6];
-    llvm::Function *langObjectCallB[6];
-    llvm::Function *langObjectCallN[6];
-    llvm::Function *langObjectCallNB[6];
     llvm::Function *langObjectCallV;
     llvm::Function *langObjectCallBV;
     llvm::Function *langObjectCallNV;

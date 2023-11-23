@@ -103,10 +103,8 @@ T.new.a*=5
         return -1;
     }
     auto *main = Lang::PrimaryConstants::GlobalScope;
-    Lang::FunctionDefMeta putsMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uputs)};
-    main->defineInstanceMethod(Lang::Symbol::get("puts"), &putsMeta);
-    Lang::FunctionDefMeta raiseMeta{1, 0, false, 0, false, false, reinterpret_cast<void *>(&Uraise)};
-    main->defineInstanceMethod(Lang::Symbol::get("raise"), &raiseMeta);
+    main->defineInstanceMethod(Lang::Symbol::get("puts"), reinterpret_cast<void *>(&Uputs), 1, false, false);
+    main->defineInstanceMethod(Lang::Symbol::get("raise"), reinterpret_cast<void *>(&Uraise), 1, false, false);
     std::cout << "entering ruby code. self: " << main << std::endl;
     try {
         auto resp = func(main);

@@ -7,9 +7,6 @@
 #include "FuncDefArg.h"
 
 namespace UltraRuby {
-namespace Lang {
-class FunctionDefMeta;
-}
 namespace AST {
 
 class FunctionDef : public Statement {
@@ -32,17 +29,13 @@ public:
         return body;
     }
 
-    int getMaxArgsCount();
+    int getArgc();
 
-    int getMinArgsCount();
-
-    bool hasMapTypeArgs();
+    bool hasNamedArgs();
 
     bool hasBlockArg();
 
     FuncDefArg *getBlockArg();
-
-    Lang::FunctionDefMeta createMethodDefMeta();
 
 private:
     std::string name;

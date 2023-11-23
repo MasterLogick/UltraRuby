@@ -103,7 +103,7 @@ llvm::Function *CodeGenerator::codegenFunctionInternal(AST::FunctionDef *functio
         return nullptr;
     }
     auto args = functionDef->getArgs();
-    std::vector<llvm::Type *> argTypes(functionDef->getMaxArgsCount() + 1, voidpTy);
+    std::vector<llvm::Type *> argTypes(4, voidpTy);
     auto *ft = llvm::FunctionType::get(voidpTy, argTypes, false);
     func = llvm::Function::Create(ft, llvm::Function::PrivateLinkage, functionDef->getName(), *module);
     auto *bb = llvm::BasicBlock::Create(*context, "entry", func);
@@ -393,63 +393,6 @@ void CodeGenerator::declareExternLangFunctions() {
                                                "_ZN9UltraRuby4Lang6Object4callIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEDpT_",
                                                *module);
 
-    langObjectCallB[0] = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJEEEPS1_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-    langObjectCallB[1] = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJPS1_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-    langObjectCallB[2] = llvm::Function::Create(voidp_5voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-    langObjectCallB[3] = llvm::Function::Create(voidp_6voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-    langObjectCallB[4] = llvm::Function::Create(voidp_7voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-    langObjectCallB[5] = llvm::Function::Create(voidp_8voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callBIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4ProcEDpT_",
-                                                *module);
-
-    langObjectCallN[0] = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJEEEPS1_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-    langObjectCallN[1] = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJPS1_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-    langObjectCallN[2] = llvm::Function::Create(voidp_5voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-    langObjectCallN[3] = llvm::Function::Create(voidp_6voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-    langObjectCallN[4] = llvm::Function::Create(voidp_7voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-    langObjectCallN[5] = llvm::Function::Create(voidp_8voidp, llvm::Function::ExternalLinkage,
-                                                "_ZN9UltraRuby4Lang6Object5callNIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEDpT_",
-                                                *module);
-
-    langObjectCallNB[0] = llvm::Function::Create(voidp_4voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJEEEPS1_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-    langObjectCallNB[1] = llvm::Function::Create(voidp_5voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJPS1_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-    langObjectCallNB[2] = llvm::Function::Create(voidp_6voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-    langObjectCallNB[3] = llvm::Function::Create(voidp_7voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-    langObjectCallNB[4] = llvm::Function::Create(voidp_8voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-    langObjectCallNB[5] = llvm::Function::Create(voidp_9voidp, llvm::Function::ExternalLinkage,
-                                                 "_ZN9UltraRuby4Lang6Object6callNBIJPS1_S3_S3_S3_S3_EEES3_PNS0_6SymbolEPNS0_4HashEPNS0_4ProcEDpT_",
-                                                 *module);
-
     langObjectCallV = llvm::Function::Create(voidp_2voidpintvoidp, llvm::Function::ExternalLinkage,
                                              "_ZN9UltraRuby4Lang6Object5callVEPNS0_6SymbolEiPPS1_", *module);
     langObjectCallBV = llvm::Function::Create(voidp_3voidpintvoidp, llvm::Function::ExternalLinkage,
@@ -463,10 +406,10 @@ void CodeGenerator::declareExternLangFunctions() {
                                                *module);
 
     langObjectDefineInstanceMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPNS0_15FunctionDefMetaE",
+                                                            "_ZN9UltraRuby4Lang6Object20defineInstanceMethodEPNS0_6SymbolEPvibb",
                                                             *module);
     langObjectDefineSingletonMethod = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                                             "_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEiiPv",
+                                                             "_ZN9UltraRuby4Lang6Object21defineSingletonMethodEPNS0_6SymbolEPvibb",
                                                              *module);
     langObjectDefineClassInstance = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
                                                            "_ZN9UltraRuby4Lang6Object19defineClassInstanceEPFPS1_S2_E",
@@ -538,7 +481,7 @@ bool CodeGenerator::codegenArgsProcessingPreamble(AST::FunctionDef *functionDef,
     }
 
     llvm::Argument *mapArg = nullptr;
-    if (functionDef->hasMapTypeArgs()) {
+    if (functionDef->hasNamedArgs()) {
         argsEnd--;
         mapArg = argsEnd;
         mapArg->setName("mapArg");
@@ -849,21 +792,10 @@ llvm::Value *CodeGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
     } else {
         self = codegenSelf();
     }
-
-    auto meta = functionDef->createMethodDefMeta();
-    auto *cs = llvm::ConstantStruct::get(functionDefMetaType,
-                                         std::vector<llvm::Constant *>{
-                                                 func,
-                                                 builder->getInt8(meta.getRequiredArgsPrefixNum()),
-                                                 builder->getInt8(meta.getOptionalArgsNum()),
-                                                 builder->getInt8(meta.getRequiredArgsSuffixNum()),
-                                                 builder->getInt8(meta.getRequiredArgsTotalNum()),
-                                                 builder->getInt8(meta.getDirectArgsNum()),
-                                                 builder->getInt8(meta.getFlags()),
-                                         });
-    auto *var = new llvm::GlobalVariable(*module, functionDefMetaType, false, llvm::GlobalValue::PrivateLinkage, cs,
-                                         "functionDefMeta:" + func->getName());
-    std::vector<llvm::Value *> args{self, codegenSymbol(functionDef->getName()), var};
+    std::vector<llvm::Value *> args{self, codegenSymbol(functionDef->getName()), func,
+                                    builder->getInt32(functionDef->getArgc()),
+                                    builder->getInt1(functionDef->hasBlockArg()),
+                                    builder->getInt1(functionDef->hasNamedArgs())};
     if (functionDef->getSingleton() != nullptr) {
         return codegenLangCall(langObjectDefineSingletonMethod, args);
     } else {

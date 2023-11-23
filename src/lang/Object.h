@@ -3,7 +3,6 @@
 
 #include <vector>
 #include "HashInternal.h"
-#include "FunctionDefMeta.h"
 
 namespace UltraRuby {
 namespace Lang {
@@ -12,8 +11,6 @@ class Class;
 class HashInternal;
 
 class Symbol;
-
-class FunctionDefMeta;
 
 class Hash;
 
@@ -34,25 +31,16 @@ public:
 
     Object *callV(Symbol *name, int n, Object **args);
 
-    template<class... Args>
-    Object *callB(Symbol *name, Proc *block, Args ...args);
-
     Object *callBV(Symbol *name, Proc *block, int n, Object **args);
 
-    template<class... Args>
-    Object *callN(Symbol *name, Hash *namedMap, Args ...args);
-
     Object *callNV(Symbol *name, Hash *namedMap, int n, Object **args);
-
-    template<class... Args>
-    Object *callNB(Symbol *name, Hash *namedMap, Proc *block, Args ...args);
 
     Object *callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args);
 
 
-    Symbol *defineInstanceMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
+    Symbol *defineInstanceMethod(Symbol *nameSymbol, void *function, int argc, bool hasBlock, bool hasNamedArgs);
 
-    Symbol *defineSingletonMethod(Symbol *nameSymbol, FunctionDefMeta *methodDef);
+    Symbol *defineSingletonMethod(Symbol *nameSymbol, void *function, int argc, bool hasBlock, bool hasNamedArgs);
 
     Object *defineClassInstance(Object *(*)(Object *));
 
@@ -64,8 +52,12 @@ public:
         return objectClass;
     }
 
-private:
-    const FunctionDefMeta *findFunction(Symbol *name);
+    HashInternal *getSingletonMethods() const {
+        return singletonMethods;
+    }
+
+protected:
+    const void *findFunction(Symbol *name);
 
     Class *objectClass;
     HashInternal *singletonMethods;

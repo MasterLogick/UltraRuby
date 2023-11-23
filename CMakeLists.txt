@@ -93,11 +93,8 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/ast/CaseWhereBlock.h
         src/loader/EmittedObject.cpp
         src/loader/EmittedObject.h
-        src/lang/FunctionDefMeta.cpp
-        src/lang/FunctionDefMeta.h
         src/lang/Proc.cpp
         src/lang/Proc.h
-        src/lang/Exception.cpp
         src/lang/Exception.h
         src/ast/Rescue.h
         src/ast/InstanceVariable.h
@@ -107,6 +104,8 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/parser/ParseException.h
         src/parser/ParseRewindGuard.cpp
         src/parser/ParseRewindGuard.h
+        src/lang/impl/BasicObjectImpl.cpp
+        src/lang/impl/BasicObjectImpl.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

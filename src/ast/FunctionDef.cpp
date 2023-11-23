@@ -1,56 +1,10 @@
 #include "FunctionDef.h"
-#include "../lang/FunctionDefMeta.h"
+#include "../lang/Object.h"
 
 namespace UltraRuby {
 namespace AST {
 
-int FunctionDef::getMaxArgsCount() {
-    int count = 0;
-    bool hasMap = false;
-    for (const auto &item: args) {
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_NORMAL) {
-            count++;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_MAP) {
-            hasMap = true;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_BLOCK) {
-            count++;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_VARIADIC) {
-            count++;
-        }
-    }
-    if (hasMap) {
-        count++;
-    }
-    return count;
-}
-
-int FunctionDef::getMinArgsCount() {
-    int count = 0;
-    bool hasMap = false;
-    for (const auto &item: args) {
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_NORMAL && item->getDefaultValue() == nullptr) {
-            count++;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_MAP) {
-            hasMap = true;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_BLOCK) {
-            count++;
-        }
-        if (item->getType() == FuncDefArg::AST_ARG_TYPE_VARIADIC) {
-            count++;
-        }
-    }
-    if (hasMap) {
-        count++;
-    }
-    return count;
-}
-
-bool FunctionDef::hasMapTypeArgs() {
+bool FunctionDef::hasNamedArgs() {
     for (const auto &item: args) {
         if (item->getType() == FuncDefArg::AST_ARG_TYPE_MAP) {
             return true;
@@ -81,44 +35,20 @@ FunctionDef::FunctionDef(std::string name, std::vector<FuncDefArg *> args, State
         : Statement(STMT_FUNC_DEF), name(std::move(name)), args(std::move(args)), singleton(singleton),
           body(body) {}
 
-Lang::FunctionDefMeta FunctionDef::createMethodDefMeta() {
-    char requiredPrefix = 0;
-    char requiredSuffix = 0;
-    char optional = 0;
-    bool hasVariadic = false;
-    bool namedArgs = false;
-    bool capturesBlock = false;
-    int i = 0;
-    for (const auto &item: args) {
-        switch (item->getType()) {
-            case FuncDefArg::AST_ARG_TYPE_NORMAL: {
-                if (item->getDefaultValue() != nullptr) {
-                    optional++;
-                } else if (optional != 0 || hasVariadic ) {
-                    requiredSuffix++;
-                } else {
-                    requiredPrefix++;
-                }
-                break;
-            }
-            case FuncDefArg::AST_ARG_TYPE_VARIADIC: {
-                hasVariadic = true;
-                break;
-            }
-            case FuncDefArg::AST_ARG_TYPE_BLOCK: {
-                capturesBlock = true;
-                break;
-            }
-            case FuncDefArg::AST_ARG_TYPE_MAP: {
-                // map args passed separately in one arg
-                i--;
-                namedArgs = true;
-                break;
-            }
+int FunctionDef::getArgc() {
+    int argc = 0;
+    for (const auto &arg: args) {
+        auto type = arg->getType();
+        if (type == FuncDefArg::AST_ARG_TYPE_BLOCK || type == FuncDefArg::AST_ARG_TYPE_MAP ||
+            type == FuncDefArg::AST_ARG_TYPE_VARIADIC || arg->getDefaultValue() != nullptr) {
+            return -1;
         }
-        i++;
+        argc++;
     }
-    return {requiredPrefix, optional, hasVariadic, requiredSuffix, namedArgs, capturesBlock, nullptr};
+    if (argc > Lang::Object::MaxDirectArgsLen) {
+        return -1;
+    }
+    return argc;
 }
 }
 }
