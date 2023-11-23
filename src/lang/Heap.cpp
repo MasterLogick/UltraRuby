@@ -3,9 +3,8 @@
 
 namespace UltraRuby {
 namespace Lang {
-Object *Heap::allocateNewObject(Class *oClass) {
-    auto *arr = new char[oClass->getInstanceSize()];
-    return new(arr)Object(oClass);
+Object *Heap::allocateNewObject(size_t size) {
+    return reinterpret_cast<Object *>(new uint8_t[size]);
 }
 } // UltraRuby
 } // Lang

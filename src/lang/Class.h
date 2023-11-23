@@ -32,7 +32,7 @@ public:
 
     void setConst(Symbol *nameSymbol, Object *object);
 
-private:
+protected:
     std::string name;
     HashInternal consts;
     Class *parent;

@@ -19,10 +19,12 @@ private:
         static void loadImpl();
 
     private:
-        Object *self_new_impl(Hash *h, Proc *b, int argc, Object **args);
+        static Symbol *initializeSymbol;
+
+        Object *self_new(int argc, Object **argv);
     };
 
-    Object *initialize_impl();
+    Object *initialize();
 };
 
 } // UltraRuby

@@ -33,10 +33,11 @@ public:
 
     Object *callBV(Symbol *name, Proc *block, int n, Object **args);
 
-    Object *callNV(Symbol *name, Hash *namedMap, int n, Object **args);
+    Object *callNV(Symbol *name, int n, Object **args);
 
-    Object *callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args);
+    Object *callNBV(Symbol *name, Proc *block, int n, Object **args);
 
+    Object *callForward(Symbol *name, int n, Object **args);
 
     Symbol *defineInstanceMethod(Symbol *nameSymbol, void *function, int argc, bool hasBlock, bool hasNamedArgs);
 

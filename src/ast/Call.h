@@ -14,17 +14,19 @@ namespace AST {
 class Call : public Statement {
 public:
     Call(std::string name, CallArgs *args, Statement *object)
-            : Statement(STMT_CALL), name(std::move(name)), object(object), args(args) {}
+            : Statement(STMT_CALL), name(std::move(name)), object(object), args(args) {
+        assert((args->hasBrackets() && name.empty() || !args->hasBrackets()) && "bracket call must have empty name");
+    }
 
-    inline const std::string &getName() const {
+    const std::string &getName() const {
         return name;
     }
 
-    inline Statement *getObject() const {
+    Statement *getObject() const {
         return object;
     }
 
-    inline CallArgs *getArgs() const {
+    CallArgs *getArgs() const {
         return args;
     }
 

@@ -104,6 +104,8 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/parser/ParseRewindGuard.h
         src/lang/impl/BasicObjectImpl.cpp
         src/lang/impl/BasicObjectImpl.h
+        src/lang/impl/NativeImplLoader.cpp
+        src/lang/impl/NativeImplLoader.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

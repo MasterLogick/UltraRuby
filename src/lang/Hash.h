@@ -11,6 +11,7 @@ public:
     static Hash *allocOnHeap(int n, Object** pairs);
 
 private:
+    Hash();
     HashInternal impl;
 };
 

@@ -31,7 +31,7 @@ Object *Object::call(Symbol *name, Args ...oArgs) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
     }
-    if (func->argc == 0xf) {
+    if (func->argc == -1) {
         auto *savedProc = currentProc;
         currentProc = PrimaryConstants::NilConst;
         Object *retVal;
@@ -77,7 +77,7 @@ Object *Object::callV(Symbol *name, int n, Object **args) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
     }
-    if (func->argc == 0xf) {
+    if (func->argc == -1) {
         auto *savedProc = currentProc;
         currentProc = PrimaryConstants::NilConst;
         Object *retVal;
@@ -139,7 +139,7 @@ Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
     }
-    if (func->argc == 0xf) {
+    if (func->argc == -1) {
         auto *savedProc = currentProc;
         currentProc = block;
         Object *retVal;
@@ -195,24 +195,16 @@ Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
     }
 }
 
-Object *Object::callNV(Symbol *name, Hash *namedMap, int n, Object **args) {
+Object *Object::callNV(Symbol *name, int n, Object **args) {
     auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
     }
-    if (func->argc == 0xf) {
+    if (func->argc == -1) {
         auto *savedProc = currentProc;
         currentProc = PrimaryConstants::NilConst;
-        Object *retVal;
-        if (func->hasNamedArgs) {
-            auto *args1 = new Object *[n + 1];
-            memcpy(args1, args, n);
-            args1[n] = namedMap;
-            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
-        } else {
-            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
-        }
+        Object *retVal = reinterpret_cast<CallVType>(func->function)(this, func->hasNamedArgs ? n : n + 1, args);
         currentProc = savedProc;
         return retVal;
     } else {
@@ -257,24 +249,16 @@ Object *Object::callNV(Symbol *name, Hash *namedMap, int n, Object **args) {
     }
 }
 
-Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object **args) {
+Object *Object::callNBV(Symbol *name, Proc *block, int n, Object **args) {
     auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
     }
-    if (func->argc == 0xf) {
+    if (func->argc == -1) {
         auto *savedProc = currentProc;
         currentProc = block;
-        Object *retVal;
-        if (func->hasNamedArgs) {
-            auto *args1 = new Object *[n + 1];
-            memcpy(args1, args, n);
-            args1[n] = namedMap;
-            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args1);
-        } else {
-            retVal = reinterpret_cast<CallVType>(func->function)(this, n, args);
-        }
+        Object *retVal = reinterpret_cast<CallVType>(func->function)(this, func->hasNamedArgs ? n : n + 1, args);
         currentProc = savedProc;
         return retVal;
     } else {
@@ -316,6 +300,46 @@ Object *Object::callNBV(Symbol *name, Hash *namedMap, Proc *block, int n, Object
         static_assert(MaxDirectArgsLen == 5, "implement more");
         currentProc = savedProc;
         return retVal;
+    }
+}
+
+Object *Object::callForward(Symbol *name, int n, Object **args) {
+    //todo named args map may be remain unused and undetected if callee do not use it
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    if (func == nullptr) {
+        // todo try find function using `respond_to?`
+        throw Exception(nullptr);
+    }
+    if (func->argc == -1) {
+        return reinterpret_cast<CallVType>(func->function)(this, n, args);
+    } else {
+        if (n != func->argc) {
+            //todo throw wrong number of arguments (given n, expected func->argc) (ArgumentError)
+            throw Exception(nullptr);
+        }
+        switch (n) {
+            case 0:
+                return reinterpret_cast<CallType<>>(func->function)
+                        (this);
+            case 1:
+                return reinterpret_cast<CallType<Object *>>(func->function)
+                        (this, args[0]);
+            case 2:
+                return reinterpret_cast<CallType<Object *, Object *>>(func->function)
+                        (this, args[0], args[1]);
+            case 3:
+                return reinterpret_cast<CallType<Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2]);
+            case 4:
+                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3]);
+            case 5:
+                return reinterpret_cast<CallType<Object *, Object *, Object *, Object *, Object *>>(func->function)
+                        (this, args[0], args[1], args[2], args[3], args[4]);
+            default:
+                std::terminate();
+        }
+        static_assert(MaxDirectArgsLen == 5, "implement more");
     }
 }
 
@@ -324,12 +348,17 @@ Symbol *Object::defineInstanceMethod(Symbol *nameSymbol, void *function, int arg
         // todo throw format mismatch exception
         throw Exception(nullptr);
     }
-    objectClass->getConsts().set(nameSymbol, new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
+    if (objectClass == BasicClasses::ClassClass) {
+        reinterpret_cast<Class *>(this)->getConsts().set(nameSymbol,
+                                                         new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
+    } else {
+        objectClass->getConsts().set(nameSymbol, new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
+    }
     return nameSymbol;
 }
 
 Symbol *Object::defineSingletonMethod(Symbol *nameSymbol, void *function, int argc, bool hasBlock, bool hasNamedArgs) {
-    if (argc > MaxDirectArgsLen || (hasBlock || hasNamedArgs && argc != -1)) {
+    if (argc > MaxDirectArgsLen || ((hasBlock || hasNamedArgs) && argc != -1)) {
         // todo throw format mismatch exception
         throw Exception(nullptr);
     }
@@ -359,9 +388,7 @@ const void *Object::findFunction(Symbol *name) {
             auto *singMet = cl->getSingletonMethods();
             if (singMet) {
                 v = singMet->get(name);
-                if (v) {
-                    return v;
-                }
+                if (v) return v;
             }
             cl = cl->getParent();
         }
@@ -369,7 +396,7 @@ const void *Object::findFunction(Symbol *name) {
         Class *cl = objectClass;
         while (cl != nullptr) {
             v = cl->getConsts().get(name);
-            if (v != nullptr) break;
+            if (v) return v;
             cl = cl->getParent();
         }
     }

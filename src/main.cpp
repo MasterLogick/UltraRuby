@@ -13,6 +13,7 @@
 #include "loader/EmittedObject.h"
 #include "lang/Exception.h"
 #include "parser/ParseException.h"
+#include "lang/impl/NativeImplLoader.h"
 #include <dlfcn.h>
 
 using namespace UltraRuby;
@@ -29,6 +30,7 @@ Lang::Object *Uraise(Lang::Object *self, Lang::Object *arg) {
 int main() {
     Lang::BasicClasses::init();
     Lang::PrimaryConstants::init();
+    Lang::Impl::NativeImplLoader::loadImpl();
 
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmParser();

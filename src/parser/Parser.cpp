@@ -135,7 +135,7 @@ AST::Statement *Parser::parsePrimary() {
         if (currentLexerToken == Lexer::TOK_DOT) {
             nextLexerToken();
             skipTerms();
-            if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
+            if (currentLexerToken == Lexer::TOK_PAREN_LEFT) {
                 auto args = parseCallArgs();
                 obj = new AST::Call("call", args, obj);
             } else {
@@ -144,11 +144,17 @@ AST::Statement *Parser::parsePrimary() {
                 }
                 std::string name = parseName(false);
                 auto args = parseCallArgs();
-                obj = new AST::Call(std::move(name), args, obj);
+                if (args->hasBrackets()) {
+                    obj = new AST::Call("", args,
+                                        new AST::Call(std::move(name), new AST::CallArgs({}, {}, nullptr, false,
+                                                                                         true), obj));
+                } else {
+                    obj = new AST::Call(std::move(name), args, obj);
+                }
             }
         } else if (currentLexerToken == Lexer::TOK_BRACKET_LEFT) {
             auto args = parseCallArgs();
-            obj = new AST::Call(std::string(), args, obj);
+            obj = new AST::Call("", args, obj);
         } else if (currentLexerToken == Lexer::TOK_DOUBLE_COLON) {
             nextLexerToken();
             if (!testName(false)) {
@@ -473,9 +479,28 @@ AST::Statement *Parser::parsePrimaryObject() {
         case Lexer::TOK_IDENTIFIER: {
             auto name = parseName(false);
             if ('A' <= name.front() && name.front() <= 'Z') {
-                return new AST::ConstantRef(nullptr, std::move(name));
+                try {
+                    ParseRewindGuard prg(this);
+                    auto *callArgs = parseCallArgs();
+                    prg.release();
+                    if (callArgs->getArgs().empty()) {
+                        delete callArgs;
+                        return new AST::ConstantRef(nullptr, std::move(name));
+                    } else {
+                        return new AST::Call(std::move(name), callArgs, nullptr);
+                    }
+                } catch (ParseException &e) {
+                    return new AST::ConstantRef(nullptr, std::move(name));
+                }
             }
-            return new AST::LocalVariable(std::move(name));
+            try {
+                ParseRewindGuard prg(this);
+                auto *callArgs = parseCallArgs();
+                prg.release();
+                return new AST::Call(name, callArgs, nullptr);
+            } catch (ParseException &e) {
+                return new AST::LocalVariable(std::move(name));
+            }
         }
         case Lexer::TOK_DOUBLE_COLON: {
             nextLexerToken();

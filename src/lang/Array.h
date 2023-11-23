@@ -11,6 +11,8 @@ public:
     static Array *allocOnHeap(int size, Object **arr);
 
 private:
+    Array();
+
     std::vector<Object *> impl;
 };
 
