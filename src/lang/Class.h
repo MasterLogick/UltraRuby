@@ -4,21 +4,15 @@
 #include <string>
 #include "HashInternal.h"
 #include "Object.h"
+#include "Module.h"
+#include "Module.h"
 
 namespace UltraRuby {
 namespace Lang {
 
-class Class : public Object {
+class Class : public Module {
 public:
-    Class(Class *parent, std::string name, int size);
-
-    const std::string &getName() const {
-        return name;
-    }
-
-    HashInternal &getConsts() {
-        return consts;
-    }
+    Class(std::string name, Class *parent, Module *holder, int size);
 
     Class *getParent() const {
         return parent;
@@ -28,17 +22,13 @@ public:
         return instanceSize;
     }
 
-    Object *getConst(Symbol *nameSymbol);
+    const void *findClassSingletonMethod(Symbol *methodName);
 
-    void setConst(Symbol *nameSymbol, Object *object);
+    const void *findClassInstanceMethod(Symbol *methodName);
 
 protected:
-    std::string name;
-    HashInternal consts;
     Class *parent;
     int instanceSize;
-
-
 };
 
 } // UltraRuby

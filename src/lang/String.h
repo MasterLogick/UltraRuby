@@ -13,6 +13,10 @@ public:
 
     static String *get(const std::string &val);
 
+    const std::string &getVal() const {
+        return val;
+    }
+
 private:
     std::string val;
 };

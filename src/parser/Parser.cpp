@@ -772,6 +772,7 @@ std::tuple<std::vector<std::string>, std::vector<AST::OptionalArg *>, std::strin
     // 2 - variadic
     // 3 - required suffix
     // 4 - named args
+    // todo handle `**args` arg type
     int stage = 0;
     while (true) {
         if (greedy) {
@@ -779,7 +780,6 @@ std::tuple<std::vector<std::string>, std::vector<AST::OptionalArg *>, std::strin
         } else {
             skipSpaces();
         }
-
         if (currentLexerToken == Lexer::TOK_OP) {
             if (queue->getOperation() == AST::LEX_OP_STAR && stage < 2) {
                 if (!variadicArg.empty()) {

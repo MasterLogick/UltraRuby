@@ -8,22 +8,25 @@
 
 namespace UltraRuby {
 namespace Lang {
-Class::Class(Class *parent, std::string name, int size) :
-        Object(BasicClasses::ClassClass),
-        name(std::move(name)),
+Class::Class(std::string name, Class *parent, Module *holder, int size) :
+        Module(std::move(name), holder),
         parent(parent),
-        instanceSize(size) {}
-
-Object *Class::getConst(Symbol *nameSymbol) {
-    if (auto *v = consts.get(nameSymbol)) {
-        return static_cast<Object *>(v);
-    }
-    throw Exception(nullptr);
-    //todo throw exception
+        instanceSize(size) {
+    objectClass = BasicClasses::ClassClass;
 }
 
-void Class::setConst(Symbol *nameSymbol, Object *object) {
-    consts.set(nameSymbol, object);
+const void *Class::findClassSingletonMethod(Symbol *methodName) {
+    if (auto *v = findModuleSingletonMethod(methodName)) {
+        return v;
+    }
+    return parent->findClassSingletonMethod(methodName);
+}
+
+const void *Class::findClassInstanceMethod(Symbol *methodName) {
+    if (auto *v = findModuleInstanceMethod(methodName)) {
+        return v;
+    }
+    return parent->findClassInstanceMethod(methodName);
 }
 } // UltraRuby
 } // Lang

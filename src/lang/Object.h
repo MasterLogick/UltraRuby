@@ -2,10 +2,13 @@
 #define ULTRA_RUBY_LANG_OBJECT_H
 
 #include <vector>
+#include <string>
 #include "HashInternal.h"
 
 namespace UltraRuby {
 namespace Lang {
+class Module;
+
 class Class;
 
 class HashInternal;
@@ -15,6 +18,27 @@ class Symbol;
 class Hash;
 
 class Proc;
+
+#define DEFINE_INSTANCE_METHOD(module, function, methodName, argc, hasBlock, hasNamedMap) \
+{                                                                                         \
+    auto ptr = &function;                                                                 \
+    module->defineInstanceMethod(Symbol::get(methodName),                                 \
+        *reinterpret_cast<void **>(&ptr), argc, hasBlock, hasNamedMap);                   \
+}
+#define DEFINE_INSTANCE_METHOD_C(module, function, methodName, argc) \
+    DEFINE_INSTANCE_METHOD(module, function, methodName, argc, false, false)
+
+#define DEFINE_INSTANCE_METHOD_V(module, function, methodName) \
+    DEFINE_INSTANCE_METHOD(module, function, methodName, -1, false, false)
+
+#define DEFINE_INSTANCE_METHOD_P(module, function, methodName) \
+    DEFINE_INSTANCE_METHOD(module, function, methodName, -1, true, false)
+
+#define DEFINE_INSTANCE_METHOD_N(module, function, methodName) \
+    DEFINE_INSTANCE_METHOD(module, function, methodName, -1, false, true)
+
+#define DEFINE_INSTANCE_METHOD_B(module, function, methodName) \
+    DEFINE_INSTANCE_METHOD(module, function, methodName, -1, true, true)
 
 class Object {
 public:
@@ -47,7 +71,7 @@ public:
 
     Object *defineClass(Symbol *nameSymbol, Class *parent, Object *(*definition)(Class *));
 
-    Object *defineModule(Symbol *nameSymbol, Object *(*definition)(Class *));
+    Object *defineModule(Symbol *nameSymbol, Object *(*definition)(Module *));
 
     Class *getObjectClass() const {
         return objectClass;
@@ -59,8 +83,9 @@ public:
 
     static thread_local Object *currentProc;
 
+    const void *findMethod(Symbol *name);
+
 protected:
-    const void *findFunction(Symbol *name);
 
     Class *objectClass;
     HashInternal *singletonMethods;

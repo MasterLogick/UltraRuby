@@ -7,6 +7,7 @@
 #include "PrimaryConstants.h"
 #include "Exception.h"
 #include "Proc.h"
+#include "Module.h"
 
 namespace UltraRuby {
 namespace Lang {
@@ -26,7 +27,7 @@ struct FunctionDefMeta {
 template<class... Args>
 Object *Object::call(Symbol *name, Args ...oArgs) {
     constexpr char CallNumArgs = sizeof...(oArgs);
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -72,7 +73,7 @@ template Object *Object::call(Symbol *, Object *, Object *, Object *, Object *);
 template Object *Object::call(Symbol *, Object *, Object *, Object *, Object *, Object *);
 
 Object *Object::callV(Symbol *name, int n, Object **args) {
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -134,7 +135,7 @@ Object *Object::callV(Symbol *name, int n, Object **args) {
 }
 
 Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -196,7 +197,7 @@ Object *Object::callBV(Symbol *name, Proc *block, int n, Object **args) {
 }
 
 Object *Object::callNV(Symbol *name, int n, Object **args) {
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -250,7 +251,7 @@ Object *Object::callNV(Symbol *name, int n, Object **args) {
 }
 
 Object *Object::callNBV(Symbol *name, Proc *block, int n, Object **args) {
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -305,7 +306,7 @@ Object *Object::callNBV(Symbol *name, Proc *block, int n, Object **args) {
 
 Object *Object::callForward(Symbol *name, int n, Object **args) {
     //todo named args map may be remain unused and undetected if callee do not use it
-    auto *func = reinterpret_cast<const FunctionDefMeta *>(findFunction(name));
+    auto *func = reinterpret_cast<const FunctionDefMeta *>(findMethod(name));
     if (func == nullptr) {
         // todo try find function using `respond_to?`
         throw Exception(nullptr);
@@ -344,7 +345,7 @@ Object *Object::callForward(Symbol *name, int n, Object **args) {
 }
 
 Symbol *Object::defineInstanceMethod(Symbol *nameSymbol, void *function, int argc, bool hasBlock, bool hasNamedArgs) {
-    if (argc > MaxDirectArgsLen || (hasBlock || hasNamedArgs && argc != -1)) {
+    if (argc > MaxDirectArgsLen || ((hasBlock || hasNamedArgs) && argc != -1)) {
         // todo throw format mismatch exception
         throw Exception(nullptr);
     }
@@ -374,7 +375,7 @@ Object *Object::defineClassInstance(Object *(*definition)(Object *)) {
     throw Exception(nullptr);
 }
 
-const void *Object::findFunction(Symbol *name) {
+const void *Object::findMethod(Symbol *name) {
     void *v;
     if (singletonMethods) {
         v = singletonMethods->get(name);
@@ -383,42 +384,53 @@ const void *Object::findFunction(Symbol *name) {
         }
     }
     if (objectClass == BasicClasses::ClassClass) {
-        auto *cl = reinterpret_cast<Class *>(this)->getParent();
-        while (cl != nullptr) {
-            auto *singMet = cl->getSingletonMethods();
-            if (singMet) {
-                v = singMet->get(name);
-                if (v) return v;
-            }
-            cl = cl->getParent();
-        }
+        return reinterpret_cast<Class *>(this)->findClassSingletonMethod(name);
+    } else if (objectClass == BasicClasses::ModuleClass) {
+        return reinterpret_cast<Module *>(this)->findModuleSingletonMethod(name);
     } else {
-        Class *cl = objectClass;
-        while (cl != nullptr) {
-            v = cl->getConsts().get(name);
-            if (v) return v;
-            cl = cl->getParent();
-        }
+        return objectClass->findClassInstanceMethod(name);
     }
-    return nullptr;
 }
 
 Object *Object::defineClass(Symbol *nameSymbol, Class *parent, Object *(*definition)(Class *)) {
+    //todo move to Class class
     if (this == PrimaryConstants::GlobalScope) {
-        return BasicClasses::RootClass->defineClass(nameSymbol, parent, definition);
+        return BasicClasses::RootModule->defineClass(nameSymbol, parent, definition);
     }
-    assert(objectClass == BasicClasses::ClassClass && "class definition in method body");
-    auto *c = static_cast<Class *>(this);
-    if (auto *v = c->getConsts().get(nameSymbol)) {
-        return definition(static_cast<Class *>(v));
+    assert((objectClass == BasicClasses::ClassClass || objectClass == BasicClasses::ModuleClass) &&
+           "disallow class definition in method body");
+    auto *c = reinterpret_cast<Module *>(this);
+    if (auto *v = static_cast<Object *>(c->getConsts().get(nameSymbol))) {
+        if (v->objectClass != BasicClasses::ClassClass) {
+            //todo throw exception nameSymbol is not a class (TypeError)
+            throw Exception(nullptr);
+        }
+        return definition(reinterpret_cast<Class *>(v));
     }
-    auto *v = new Class(parent, nameSymbol->getSym(), sizeof(Object));
+    auto *v = new Class(nameSymbol->getSym(), parent, reinterpret_cast<Module *>(this), sizeof(Object));
     c->setConst(nameSymbol, v);
     return definition(v);
 }
 
-Object *Object::defineModule(Symbol *nameSymbol, Object *(*definition)(Class *)) {
-    throw Exception(nullptr);
+Object *Object::defineModule(Symbol *nameSymbol, Object *(*definition)(Module *)) {
+    //todo move to Module class
+    if (this == PrimaryConstants::GlobalScope) {
+        return BasicClasses::RootModule->defineModule(nameSymbol, definition);
+    }
+    assert((objectClass == BasicClasses::ClassClass || objectClass == BasicClasses::ModuleClass) &&
+           "disallow module definition in method body");
+
+    auto *c = reinterpret_cast<Module *>(this);
+    if (auto *v = static_cast<Object *>(c->getConsts().get(nameSymbol))) {
+        if (v->objectClass != BasicClasses::ModuleClass) {
+            //todo throw exception nameSymbol is not a module (TypeError)
+            throw Exception(nullptr);
+        }
+        return definition(reinterpret_cast<Module *>(v));
+    }
+    auto *v = new Module(nameSymbol->getSym(), reinterpret_cast<Module *>(this));
+    c->setConst(nameSymbol, v);
+    return definition(v);
 }
 
 } // UltraRuby

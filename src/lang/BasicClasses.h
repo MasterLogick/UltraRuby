@@ -8,7 +8,7 @@ namespace Lang {
 
 class BasicClasses {
 public:
-    static Class *RootClass;
+    static Module *RootModule;
     static Class *BasicObjectClass;
     static Class *ObjectClass;
     static Class *ClassClass;
@@ -20,6 +20,7 @@ public:
     static Class *FalseClass;
     static Class *ArrayClass;
     static Class *HashClass;
+    static Module *KernelModule;
 
     static void init();
 };

@@ -14,12 +14,21 @@
 #include "lang/Exception.h"
 #include "parser/ParseException.h"
 #include "lang/impl/NativeImplLoader.h"
+#include "lang/String.h"
 #include <dlfcn.h>
 
 using namespace UltraRuby;
 
 Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
-    std::cout << self << " " << arg << std::endl;
+    if (arg) {
+        if (reinterpret_cast<uintptr_t>(self) > 0xffff && self->getObjectClass() == Lang::BasicClasses::StringClass) {
+            std::cout << reinterpret_cast<Lang::String *>(arg)->getVal() << std::endl;
+        } else {
+            std::cout << self << " " << arg << std::endl;
+        }
+    } else {
+        std::cout << self << " nil" << std::endl;
+    }
     return Lang::PrimaryConstants::NilConst;
 }
 

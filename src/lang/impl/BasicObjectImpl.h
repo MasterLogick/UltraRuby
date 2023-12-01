@@ -25,6 +25,22 @@ private:
     };
 
     Object *initialize();
+
+    Object *negation();
+
+    Object *equal(Object *rhs);
+
+    Object *not_equal(Object *rhs);
+
+    Object *id();
+
+    Object *send(int argc, Object **argv);
+
+    Object *same(Object *rhs);
+
+    Object *instance_eval(int argc, Object **argv);
+
+    Object *instance_exec(int argc, Object **argv);
 };
 
 } // UltraRuby
