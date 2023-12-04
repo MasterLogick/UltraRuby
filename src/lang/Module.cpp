@@ -50,7 +50,7 @@ const void *Module::findModuleInstanceMethod(Symbol *methodName) {
             return cv;
         }
     }
-    if (auto *v = consts.get(methodName)) {
+    if (auto *v = methods.get(methodName)) {
         if ((reinterpret_cast<uintptr_t>(v) & 1) == 0) {
             return v;
         }

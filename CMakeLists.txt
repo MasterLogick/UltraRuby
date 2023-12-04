@@ -108,6 +108,8 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lang/impl/NativeImplLoader.h
         src/lang/impl/KernelImpl.cpp
         src/lang/impl/KernelImpl.h
+        src/lang/impl/ModuleImpl.cpp
+        src/lang/impl/ModuleImpl.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

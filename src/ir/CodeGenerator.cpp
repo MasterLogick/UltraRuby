@@ -425,10 +425,10 @@ void CodeGenerator::declareExternLangFunctions() {
                                                     "_ZN9UltraRuby4Lang6Object12defineModuleEPNS0_6SymbolEPFPS1_PNS0_5ClassEE",
                                                     *module);
     langClassGetConst = llvm::Function::Create(voidp_2voidp, llvm::Function::ExternalLinkage,
-                                               "_ZN9UltraRuby4Lang5Class8getConstEPNS0_6SymbolE",
+                                               "_ZN9UltraRuby4Lang6Module8getConstEPNS0_6SymbolE",
                                                *module);
     langClassSetConst = llvm::Function::Create(voidp_3voidp, llvm::Function::ExternalLinkage,
-                                               "_ZN9UltraRuby4Lang5Class8setConstEPNS0_6SymbolEPNS0_6ObjectE",
+                                               "_ZN9UltraRuby4Lang6Module8setConstEPNS0_6SymbolEPNS0_6ObjectE",
                                                *module);
     langSymbolGet = llvm::Function::Create(voidp_1voidp, llvm::Function::ExternalLinkage,
                                            "_ZN9UltraRuby4Lang6Symbol3getEPKc", *module);
@@ -456,7 +456,7 @@ void CodeGenerator::declareExternLangFunctions() {
     falseConst = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
                                           "_ZN9UltraRuby4Lang16PrimaryConstants10FalseConstE");
     rootClass = new llvm::GlobalVariable(*module, voidpTy, true, llvm::GlobalValue::ExternalLinkage, nullptr,
-                                         "_ZN9UltraRuby4Lang12BasicClasses9RootClassE");
+                                         "_ZN9UltraRuby4Lang12BasicClasses10RootModuleE");
     currentProc = new llvm::GlobalVariable(*module, voidpTy, false, llvm::GlobalValue::ExternalLinkage, nullptr,
                                            "_ZN9UltraRuby4Lang6Object11currentProcE", nullptr,
                                            llvm::GlobalValue::GeneralDynamicTLSModel);

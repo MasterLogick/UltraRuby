@@ -8,10 +8,15 @@ namespace Lang {
 
 class Hash : public Object {
 public:
-    static Hash *allocOnHeap(int n, Object** pairs);
+    static Hash *allocOnHeap(int n, Object **pairs);
+
+    HashInternal &getImpl() {
+        return impl;
+    }
 
 private:
     Hash();
+
     HashInternal impl;
 };
 

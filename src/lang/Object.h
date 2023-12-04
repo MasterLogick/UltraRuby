@@ -40,6 +40,32 @@ class Proc;
 #define DEFINE_INSTANCE_METHOD_B(module, function, methodName) \
     DEFINE_INSTANCE_METHOD(module, function, methodName, -1, true, true)
 
+#define DEFINE_SINGLETON_METHOD(module, function, methodName, argc, hasBlock, hasNamedMap) \
+{                                                                                         \
+    auto ptr = &function;                                                                 \
+    module->defineSingletonMethod(Symbol::get(methodName),                                 \
+        *reinterpret_cast<void **>(&ptr), argc, hasBlock, hasNamedMap);                   \
+}
+#define DEFINE_SINGLETON_METHOD_C(module, function, methodName, argc) \
+    DEFINE_SINGLETON_METHOD(module, function, methodName, argc, false, false)
+
+#define DEFINE_SINGLETON_METHOD_V(module, function, methodName) \
+    DEFINE_SINGLETON_METHOD(module, function, methodName, -1, false, false)
+
+#define DEFINE_SINGLETON_METHOD_P(module, function, methodName) \
+    DEFINE_SINGLETON_METHOD(module, function, methodName, -1, true, false)
+
+#define DEFINE_SINGLETON_METHOD_N(module, function, methodName) \
+    DEFINE_SINGLETON_METHOD(module, function, methodName, -1, false, true)
+
+#define DEFINE_SINGLETON_METHOD_B(module, function, methodName) \
+    DEFINE_SINGLETON_METHOD(module, function, methodName, -1, true, true)
+#define PASSED_NAMED_ARGS_HASH(argc, argv) reinterpret_cast<Hash*>(argv+argc)
+
+#define OBJECT_TO_BOOL(obj) ((obj) == PrimaryConstants::NilConst || (obj) == PrimaryConstants::FalseConst)
+
+#define THROW_ARGS_COUNT_EXCEPTION(argc, expected) throw Exception(nullptr)
+
 class Object {
 public:
     static constexpr int ObjectClassOffset = 0;

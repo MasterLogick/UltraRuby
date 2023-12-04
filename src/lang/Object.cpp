@@ -349,11 +349,11 @@ Symbol *Object::defineInstanceMethod(Symbol *nameSymbol, void *function, int arg
         // todo throw format mismatch exception
         throw Exception(nullptr);
     }
-    if (objectClass == BasicClasses::ClassClass) {
-        reinterpret_cast<Class *>(this)->getConsts().set(nameSymbol,
-                                                         new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
+    if (objectClass == BasicClasses::ClassClass || objectClass == BasicClasses::ModuleClass) {
+        reinterpret_cast<Module *>(this)->getMethods().set(nameSymbol,
+                                                           new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
     } else {
-        objectClass->getConsts().set(nameSymbol, new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
+        objectClass->getMethods().set(nameSymbol, new FunctionDefMeta(function, argc, hasBlock, hasNamedArgs));
     }
     return nameSymbol;
 }

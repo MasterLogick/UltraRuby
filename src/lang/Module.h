@@ -18,6 +18,10 @@ public:
         return consts;
     }
 
+    HashInternal &getMethods() {
+        return methods;
+    }
+
     Module *getHolder() const {
         return holder;
     }
@@ -33,6 +37,7 @@ public:
 protected:
     std::string name;
     HashInternal consts;
+    HashInternal methods;
     Module *holder;
     std::vector<Module *> included;
     std::vector<Module *> extended;
