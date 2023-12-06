@@ -2,7 +2,6 @@
 #include "lexer/Lexer.h"
 #include "lexer/input/StringLexerInput.h"
 #include "parser/Parser.h"
-#include "ir/CodeGenerator.h"
 #include "ast/AST.h"
 #include "lang/BasicClasses.h"
 #include "lang/PrimaryConstants.h"
@@ -15,6 +14,8 @@
 #include "parser/ParseException.h"
 #include "lang/impl/NativeImplLoader.h"
 #include "lang/String.h"
+#include "ir/CodeModule.h"
+#include "ir/FunctionGenerator.h"
 #include <dlfcn.h>
 
 using namespace UltraRuby;
@@ -91,12 +92,16 @@ end
         std::cout << "parsing exception: " << e.what() << std::endl;
         return -1;
     }
-    IR::CodeGenerator codeGenerator;
-    auto topLevel = new AST::FunctionDef("top_required", block);
-    codeGenerator.codegenProgram(topLevel);
-    codeGenerator.debugPrintModuleIR();
+    IR::CodeModule codeModule;
+    auto *topLevel = new AST::FunctionDef("top_required", block);
 
-    Loader::EmittedObject eObj(codeGenerator);
+    IR::FunctionGenerator fg(&codeModule, topLevel);
+    fg.emmitIR();
+    fg.getFunc()->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
+    codeModule.debugPrintModuleIR();
+
+    Loader::EmittedObject eObj(codeModule);
     char *cwd = getcwd(nullptr, 0);
     std::string path(cwd);
     free(cwd);

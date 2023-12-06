@@ -15,7 +15,7 @@ int createTmpFile(char name[7]) {
     return d;
 }
 
-EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
+EmittedObject::EmittedObject(IR::CodeModule &codeModule) {
     auto targetTriple = llvm::sys::getProcessTriple();
 
     std::string error;
@@ -30,7 +30,7 @@ EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
     auto rm = std::optional<llvm::Reloc::Model>(llvm::Reloc::PIC_);
     auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
 
-    codeGenerator.setTarget(targetMachine, targetTriple);
+    codeModule.setTarget(targetMachine, targetTriple);
 
     llvm::legacy::PassManager pass;
     auto fileType = llvm::CodeGenFileType::ObjectFile;
@@ -44,7 +44,7 @@ EmittedObject::EmittedObject(IR::CodeGenerator &codeGenerator) {
         // todo throw exception
     }
 
-    codeGenerator.runPass(pass);
+    codeModule.runPass(pass);
 //    fd = createTmpFile(name);
     memcpy(name, "obj.so", 7);
     fd = open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);

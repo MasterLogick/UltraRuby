@@ -22,8 +22,6 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/ast/FunctionDef.h
         src/parser/Parser.cpp
         src/parser/Parser.h
-        src/ir/CodeGenerator.cpp
-        src/ir/CodeGenerator.h
         src/ast/OperationType.h
         src/lexer/input/StringLexerInput.cpp
         src/lexer/input/StringLexerInput.h
@@ -110,6 +108,16 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lang/impl/KernelImpl.h
         src/lang/impl/ModuleImpl.cpp
         src/lang/impl/ModuleImpl.h
+        src/ir/BlockGenerator.cpp
+        src/ir/BlockGenerator.h
+        src/ir/FunctionGenerator.cpp
+        src/ir/FunctionGenerator.h
+        src/ir/CodeModule.cpp
+        src/ir/CodeModule.h
+        src/ir/CodegenException.cpp
+        src/ir/CodegenException.h
+        src/ir/PreambleGenerator.cpp
+        src/ir/PreambleGenerator.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

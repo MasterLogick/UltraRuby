@@ -1,38 +1,37 @@
-#ifndef ULTRA_RUBY_IR_CODEGENERATOR_H
-#define ULTRA_RUBY_IR_CODEGENERATOR_H
+#ifndef ULTRA_RUBY_BLOCKGENERATOR_H
+#define ULTRA_RUBY_BLOCKGENERATOR_H
 
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Module.h>
-#include <map>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/PassManager.h>
-#include <llvm/Target/TargetMachine.h>
-#include <set>
-#include "Scope.h"
+#include "FunctionGenerator.h"
 #include "../ast/ASTClassDecls.h"
 
 namespace UltraRuby {
-namespace Lang {
-class Symbol;
-}
-
 namespace IR {
 
-class CodeGenerator {
+class BlockGenerator {
 public:
-    CodeGenerator();
+    explicit BlockGenerator(FunctionGenerator *functionGenerator);
 
-    llvm::Function *codegenProgram(AST::FunctionDef *topLevelDecl);
+    BlockGenerator(FunctionGenerator *functionGenerator, AST::Block *block);
 
-    void debugPrintModuleIR();
+    void emmitIR();
 
-    void setTarget(llvm::TargetMachine *machine, std::string triple);
+    llvm::Value *getReturnValue() const {
+        return returnValue;
+    }
 
-    void runPass(llvm::legacy::PassManager &manager);
+    llvm::IRBuilder<> *getBuilder() {
+        return builder;
+    }
 
-private:
+    llvm::BasicBlock *getEntryBlock() const {
+        return entryBlock;
+    }
+
+protected:
+
+
     //================= Lang functions codegen start =================
+
 
     llvm::Value *codegenArray(AST::Array *array);
 
@@ -96,11 +95,11 @@ private:
 
     llvm::Value *codegenInstanceVariable(AST::InstanceVariable *instanceVariable);
 
+
     //================= Lang functions codegen end =================
 
-    llvm::Value *codegenCastToBoolInt1(llvm::Value *ptr);
 
-    llvm::Function *codegenFunctionInternal(AST::FunctionDef *functionDef);
+    llvm::Value *codegenCastToBoolInt1(llvm::Value *ptr);
 
     llvm::Value *codegenLangCall(llvm::Function *langFunction, llvm::ArrayRef<llvm::Value *> args);
 
@@ -109,15 +108,11 @@ private:
                              int directArgsLen,
                              llvm::ArrayRef<llvm::Value *> args);
 
-    bool codegenArgsProcessingPreamble(AST::FunctionDef *functionDef, llvm::Function *func);
-
     llvm::Value *codegenLangVariable(AST::LangVariable *variable);
 
     llvm::Value *codegenConstantRef(AST::ConstantRef *constantRef);
 
     llvm::Constant *codegenPointer(void *data);
-
-    llvm::Constant *codegenConstPointer(const void *data);
 
     llvm::Value *codegenGetObjectClass(llvm::Value *object);
 
@@ -125,58 +120,17 @@ private:
 
     llvm::Value *codegenCall(llvm::Value *caller, AST::Call *call);
 
-    bool codegenInitializer();
-
-    void declareExternLangFunctions();
-
-    void logError(const char *error);
-
-    std::unique_ptr<llvm::LLVMContext> context;
-    std::unique_ptr<llvm::IRBuilder<>> builder;
-    std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::GlobalVariable *> syms;
-    std::map<std::string, llvm::GlobalVariable *> strs;
-    Scope *scope;
-    int suffix;
-
+    FunctionGenerator *functionGenerator;
+    CodeModule *module;
+    AST::Block *block;
+    llvm::Value *returnValue;
+    llvm::IRBuilder<> *builder;
+    llvm::LLVMContext *context;
     llvm::PointerType *voidpTy;
-    llvm::Type *int64Ty;
-    llvm::Type *int8Ty;
-    llvm::StructType *functionDefMetaType;
-    llvm::StructType *exceptionHandlerType;
-
-    llvm::Constant *nilConst;
-    llvm::Constant *trueConst;
-    llvm::Constant *falseConst;
-    llvm::Constant *rootClass;
-
-    llvm::Function *langArrayAlloc;
-    llvm::Function *langHashAlloc;
-    llvm::Function *langObjectCall[6];
-    llvm::Function *langObjectCallV;
-    llvm::Function *langObjectCallBV;
-    llvm::Function *langObjectCallNV;
-    llvm::Function *langObjectCallNBV;
-    llvm::Function *langObjectDefineInstanceMethod;
-    llvm::Function *langObjectDefineSingletonMethod;
-    llvm::Function *langObjectDefineClassInstance;
-    llvm::Function *langObjectDefineClass;
-    llvm::Function *langObjectDefineModule;
-    llvm::Function *langClassGetConst;
-    llvm::Function *langClassSetConst;
-    llvm::Function *langSymbolGet;
-    llvm::Function *langStringGet;
-
-    llvm::Function *cxaBeginCatch;
-    llvm::Function *cxaEndCatch;
-    llvm::Constant *gxxPersonalityV0;
-    llvm::Function *cxaGetExceptionPtr;
-    llvm::Constant *exceptionTypeInfo;
-
-    llvm::GlobalVariable *currentProc;
+    llvm::BasicBlock *entryBlock;
 };
 
 } // UltraRuby
 } // IR
 
-#endif //ULTRA_RUBY_IR_CODEGENERATOR_H
+#endif //ULTRA_RUBY_BLOCKGENERATOR_H
