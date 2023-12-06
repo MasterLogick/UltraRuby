@@ -19,14 +19,23 @@ void FunctionGenerator::emmitIR() {
 
     llvm::FunctionType *ft;
     int argc = functionDef->getArgc();
+    llvm::DISubroutineType *diST;
     if (argc == -1) {
         ft = llvm::FunctionType::get(voidpTy, {voidpTy, llvm::IntegerType::getInt32Ty(*module->getContext()), voidpTy},
                                      false);
+        diST = module->getVariadicSubroutineDTy();
     } else {
         ft = llvm::FunctionType::get(voidpTy, std::vector<llvm::Type *>(argc + 1, voidpTy), false);
+        diST = module->getDiBuilder()->createSubroutineType(module->getDiBuilder()->getOrCreateTypeArray(
+                std::vector<llvm::Metadata *>(argc + 1, module->getObjectPtrDTy())));
     }
     func = llvm::Function::Create(ft, llvm::Function::PrivateLinkage, functionDef->getName(), module->getLLVMModule());
 
+    subprogram = module->getDiBuilder()->createFunction(
+            module->getDiCurrentFile(), functionDef->getName(), functionDef->getName(), module->getDiCurrentFile(),
+            functionDef->row, diST, functionDef->getBody()->row, llvm::DINode::FlagPrototyped,
+            llvm::DISubprogram::SPFlagDefinition);
+    func->setSubprogram(subprogram);
     try {
         PreambleGenerator pg(this);
         pg.emmitIR();

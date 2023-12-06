@@ -39,6 +39,7 @@ void BlockGenerator::emmitIR() {
 
 llvm::Value *BlockGenerator::codegenStatement(AST::Statement *statement) {
     assert(statement != nullptr);
+    emmitLocation(statement);
     switch (statement->type) {
         case AST::STMT_BIN_OP:
             return codegenBinaryOperation(reinterpret_cast<AST::BinaryOperation *>(statement));
@@ -251,6 +252,7 @@ llvm::Value *BlockGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp)
                 auto *alloca = functionGenerator->getVariable(lv->getName());
                 if (alloca == nullptr) {
                     alloca = builder->CreateAlloca(voidpTy, nullptr, lv->getName() + "_alloca");
+                    emmitLocalVariableDebugInfo(alloca, lv->getName(), left->row, left->col);
                     functionGenerator->addVariable(lv->getName(), alloca);
                 }
                 auto *rval = codegenStatement(binOp->getRight());
@@ -426,7 +428,7 @@ llvm::Value *BlockGenerator::codegenClassDef(AST::ClassDef *classDef) {
         }
     }
 
-    AST::FunctionDef functionDef("classDef:" + name + std::to_string(module->getNextSuffix()),
+    AST::FunctionDef functionDef("classDef:" + name + ":" + std::to_string(module->getNextSuffix()),
                                  classDef->getDefinition(), classDef->getDefinition()->row,
                                  classDef->getDefinition()->col);
     FunctionGenerator fg(module, &functionDef);
@@ -476,7 +478,7 @@ llvm::Value *BlockGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
         }
     }
 
-    AST::FunctionDef functionDef("moduleDef:" + name + std::to_string(module->getNextSuffix()),
+    AST::FunctionDef functionDef("moduleDef:" + name + ":" + std::to_string(module->getNextSuffix()),
                                  moduleDef->getDefinition(), moduleDef->getDefinition()->row,
                                  moduleDef->getDefinition()->col);
     FunctionGenerator fg(module, &functionDef);
@@ -485,11 +487,11 @@ llvm::Value *BlockGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
 }
 
 llvm::Value *BlockGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
-    AST::FunctionDef function("func:" + functionDef->getName(), functionDef->getBody(),
-                              functionDef->row, functionDef->col, functionDef->getRequiredArgsPrefix(),
-                              functionDef->getOptionalArgs(), functionDef->getVariadicArg(),
-                              functionDef->getRequiredArgsSuffix(), functionDef->getNamedArgs(),
-                              functionDef->getBlockArg(), functionDef->getSingleton());
+    AST::FunctionDef function("func:" + functionDef->getName() + ":" + std::to_string(module->getNextSuffix()),
+                              functionDef->getBody(), functionDef->row, functionDef->col,
+                              functionDef->getRequiredArgsPrefix(), functionDef->getOptionalArgs(),
+                              functionDef->getVariadicArg(), functionDef->getRequiredArgsSuffix(),
+                              functionDef->getNamedArgs(), functionDef->getBlockArg(), functionDef->getSingleton());
     FunctionGenerator fg(module, &function);
     fg.emmitIR();
 
@@ -696,8 +698,10 @@ llvm::Value *BlockGenerator::codegenExceptionalBlock(AST::ExceptionalBlock *exce
             }
             if (!rescue->varName.empty()) {
                 auto *exceptionVarAloca = builder->CreateAlloca(voidpTy);
-                builder->CreateStore(exception, exceptionVarAloca);
+                emmitLocalVariableDebugInfo(exceptionVarAloca, rescue->varName, rescue->handler->row,
+                                            rescue->handler->col);
                 functionGenerator->addVariable(rescue->varName, exceptionVarAloca);
+                builder->CreateStore(exception, exceptionVarAloca);
             }
 
             codegenLangCall(module->getCxaBeginCatch(), {abstExceptionPtr});
@@ -791,6 +795,24 @@ llvm::Value *BlockGenerator::codegenConstantRef(AST::ConstantRef *constantRef) {
         outer = codegenStatement(constantRef);
     }
     return codegenLangCall(module->getLangClassGetConst(), {outer, codegenSymbol(constantRef->getName())});
+}
+
+void BlockGenerator::emmitLocation(AST::Statement *stmt) {
+    if (stmt == nullptr) {
+        builder->SetCurrentDebugLocation(llvm::DebugLoc());
+    }
+    builder->SetCurrentDebugLocation(llvm::DILocation::get(*module->getContext(), stmt->row, stmt->col,
+                                                           functionGenerator->getSubprogram()));
+}
+
+void BlockGenerator::emmitLocalVariableDebugInfo(llvm::Value *alloca, const std::string &name, int row, int col) {
+    auto *paramVarDTy = module->getDiBuilder()->createAutoVariable(
+            functionGenerator->getSubprogram(), name, module->getDiCurrentFile(), row,
+            module->getObjectPtrDTy(), true);
+    module->getDiBuilder()->insertDeclare(
+            alloca, paramVarDTy, module->getDiBuilder()->createExpression(),
+            llvm::DILocation::get(*module->getContext(), row, col, functionGenerator->getSubprogram()),
+            builder->GetInsertBlock());
 }
 } // UltraRuby
 } // IR

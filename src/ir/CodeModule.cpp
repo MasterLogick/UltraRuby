@@ -7,11 +7,27 @@ CodeModule::CodeModule() {
     context = new llvm::LLVMContext();
     new llvm::IRBuilder<>(*context);
     module = new llvm::Module("UltraRuby", *context);
+    suffix = 0;
+    diBuilder = new llvm::DIBuilder(*module);
+    auto *externalFile = diBuilder->createFile("", "");
+    auto *objectDTy = diBuilder->createForwardDecl(llvm::dwarf::DW_TAG_class_type, "UltraRuby::Lang::Object",
+                                                   externalFile, externalFile, 0,llvm::dwarf::DW_LANG_C_plus_plus);
+    objectPtrDTy = diBuilder->createPointerType(objectDTy, 64);
+    objectArrPtrDTy = diBuilder->createPointerType(objectPtrDTy, 64);
+    int32DTy = diBuilder->createBasicType("int", 32, llvm::dwarf::DW_ATE_unsigned);
+    variadicSubroutineDTy = diBuilder->createSubroutineType(
+            diBuilder->getOrCreateTypeArray({objectPtrDTy, int32DTy, objectArrPtrDTy}));
     declareExternLangFunctions();
 }
 
 void CodeModule::debugPrintModuleIR() {
     module->dump();
+}
+
+void CodeModule::setFile(std::string name, std::string directory, std::string source) {
+    diCurrentFile = diBuilder->createFile(name, directory, std::nullopt, source);
+    diCompileUnit = diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C_plus_plus, diCurrentFile,
+                                                 "UltraRuby", false, "", 0);
 }
 
 void CodeModule::setTarget(llvm::TargetMachine *machine, std::string triple) {
@@ -21,6 +37,7 @@ void CodeModule::setTarget(llvm::TargetMachine *machine, std::string triple) {
 
 void CodeModule::runPass(llvm::legacy::PassManager &manager) {
     codegenInitializer();
+    diBuilder->finalize();
     manager.run(*module);
 }
 

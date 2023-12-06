@@ -4,6 +4,7 @@
 #include <memory>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/DIBuilder.h>
 #include <map>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -17,6 +18,8 @@ public:
     CodeModule();
 
     void debugPrintModuleIR();
+
+    void setFile(std::string name, std::string directory, std::string source);
 
     void setTarget(llvm::TargetMachine *machine, std::string triple);
 
@@ -166,6 +169,34 @@ public:
         return currentProc;
     }
 
+    llvm::DIBuilder *getDiBuilder() const {
+        return diBuilder;
+    }
+
+    llvm::DICompileUnit *getDiCompileUnit() const {
+        return diCompileUnit;
+    }
+
+    llvm::DIFile *getDiCurrentFile() const {
+        return diCurrentFile;
+    }
+
+    llvm::DIType *getObjectPtrDTy() const {
+        return objectPtrDTy;
+    }
+
+    llvm::DIType *getObjectArrPtrDTy() const {
+        return objectArrPtrDTy;
+    }
+
+    llvm::DIBasicType *getInt32DTy() const {
+        return int32DTy;
+    }
+
+    llvm::DISubroutineType *getVariadicSubroutineDTy() const {
+        return variadicSubroutineDTy;
+    }
+
 private:
     void codegenInitializer();
 
@@ -212,6 +243,14 @@ private:
     llvm::Constant *exceptionTypeInfo;
 
     llvm::GlobalVariable *currentProc;
+
+    llvm::DIBuilder *diBuilder;
+    llvm::DICompileUnit *diCompileUnit;
+    llvm::DIFile *diCurrentFile;
+    llvm::DIType *objectPtrDTy;
+    llvm::DIType *objectArrPtrDTy;
+    llvm::DIBasicType *int32DTy;
+    llvm::DISubroutineType *variadicSubroutineDTy;
 };
 
 } // UltraRuby

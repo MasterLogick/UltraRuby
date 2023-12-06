@@ -13,9 +13,10 @@ public:
 
     void emmitIR();
 
-    llvm::IRBuilder<> *getBuilder(){
+    llvm::IRBuilder<> *getBuilder() {
         return BlockGenerator::getBuilder();
     }
+
 private:
     void codegenSelfExtract();
 

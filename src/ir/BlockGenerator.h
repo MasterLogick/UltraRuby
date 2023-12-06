@@ -120,6 +120,10 @@ protected:
 
     llvm::Value *codegenCall(llvm::Value *caller, AST::Call *call);
 
+    void emmitLocation(AST::Statement *stmt);
+
+    void emmitLocalVariableDebugInfo(llvm::Value *alloca, const std::string &name, int row, int col);
+
     FunctionGenerator *functionGenerator;
     CodeModule *module;
     AST::Block *block;

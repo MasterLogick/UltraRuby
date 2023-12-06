@@ -17,6 +17,7 @@
 #include "ir/FunctionGenerator.h"
 #include <dlfcn.h>
 #include <fstream>
+#include <filesystem>
 
 using namespace UltraRuby;
 
@@ -42,6 +43,8 @@ int main(int argc, char **argv) {
         std::cout << "Usage: " << argv[0] << " filename" << std::endl;
         return -1;
     }
+    char *cwd = getcwd(nullptr, 0);
+    std::filesystem::path dir(cwd);
     Lang::BasicClasses::init();
     Lang::PrimaryConstants::init();
     Lang::Impl::NativeImplLoader::loadImpl();
@@ -71,6 +74,8 @@ int main(int argc, char **argv) {
         return -1;
     }
     IR::CodeModule codeModule;
+    auto srcPath = dir / argv[1];
+    codeModule.setFile(srcPath.filename(), srcPath.parent_path(), stringLexerInput->getInput());
     auto *topLevel = new AST::FunctionDef("top_required", block, 1, 1);
 
     IR::FunctionGenerator fg(&codeModule, topLevel);
@@ -86,12 +91,9 @@ int main(int argc, char **argv) {
     codeModule.debugPrintModuleIR();
 
     Loader::EmittedObject eObj(codeModule);
-    char *cwd = getcwd(nullptr, 0);
-    std::string path(cwd);
+
     free(cwd);
-    path += "/";
-    path += eObj.name;
-    auto *f = dlopen(path.c_str(), RTLD_NOW);
+    auto *f = dlopen((dir / eObj.name).c_str(), RTLD_NOW);
     if (f == nullptr) {
         std::cout << dlerror() << std::endl;
         return -1;

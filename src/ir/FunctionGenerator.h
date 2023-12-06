@@ -13,6 +13,16 @@ public:
 
     void emmitIR();
 
+    void addVariable(const std::string &name, llvm::Value *ptr);
+
+    llvm::Value *getVariable(const std::string &name);
+
+    llvm::BasicBlock *getHandlerBlock();
+
+    void pushHandlerBlock(llvm::BasicBlock *handlerBlock);
+
+    void popHandlerBlock();
+
     CodeModule *getModule() const {
         return module;
     }
@@ -25,16 +35,9 @@ public:
         return functionDef;
     }
 
-    void addVariable(const std::string &name, llvm::Value *ptr);
-
-    llvm::Value *getVariable(const std::string &name);
-
-
-    llvm::BasicBlock *getHandlerBlock();
-
-    void pushHandlerBlock(llvm::BasicBlock *handlerBlock);
-
-    void popHandlerBlock();
+    llvm::DISubprogram *getSubprogram() const {
+        return subprogram;
+    }
 
 private:
     CodeModule *module;
@@ -42,6 +45,7 @@ private:
     AST::FunctionDef *functionDef;
     std::map<std::string, llvm::Value *> variables;
     std::deque<llvm::BasicBlock *> handlers;
+    llvm::DISubprogram *subprogram;
 };
 } // UltraRuby
 } // IR

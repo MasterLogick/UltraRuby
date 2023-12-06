@@ -11,6 +11,7 @@ PreambleGenerator::PreambleGenerator(FunctionGenerator *functionGenerator) : Blo
 void PreambleGenerator::emmitIR() {
     auto *preambleBlock = llvm::BasicBlock::Create(*context, "preambleEntry", functionGenerator->getFunc());
     builder = new llvm::IRBuilder<>(preambleBlock);
+    emmitLocation(functionDef);
     argsBegin = functionGenerator->getFunc()->arg_begin();
 
     codegenSelfExtract();
@@ -40,6 +41,7 @@ void PreambleGenerator::codegenExtractNamedArgs() {
     if (!functionDef->getNamedArgs().empty()) {
         for (const auto &arg: functionDef->getNamedArgs()) {
             auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, arg->getName() + "_alloca");;
+            emmitLocalVariableDebugInfo(argAlloca, arg->getName(), functionDef->row, functionDef->col);
             functionGenerator->addVariable(arg->getName(), argAlloca);
 
             auto *val = codegenLangCall(module->getLangObjectCall()[1], std::vector<llvm::Value *>{
@@ -62,6 +64,7 @@ void PreambleGenerator::codegenExtractNamedArgs() {
             builder->SetInsertPoint(falseBranch);
             if (arg->getDefaultValue()) {
                 auto *defaultVal = codegenStatement(arg->getDefaultValue());
+                emmitLocation(functionDef);
                 builder->CreateStore(defaultVal, argAlloca);
                 builder->CreateBr(merge);
             } else {
@@ -77,6 +80,7 @@ void PreambleGenerator::codegenExtractNamedArgs() {
 void PreambleGenerator::codegenExtractVariadicArray() {
     if (!functionDef->getVariadicArg().empty()) {
         auto *variadicAlloca = builder->CreateAlloca(voidpTy, nullptr, functionDef->getVariadicArg() + "_alloca");
+        emmitLocalVariableDebugInfo(variadicAlloca, functionDef->getVariadicArg(), functionDef->row, functionDef->col);
         functionGenerator->addVariable(functionDef->getVariadicArg(), variadicAlloca);
 
         auto *variadicPresent = builder->CreateICmpUGT(argcArg, builder->getInt32(
@@ -108,8 +112,9 @@ void PreambleGenerator::codegenExtractVariadicArray() {
 void PreambleGenerator::codegenExtractOptionalArgs() {
     if (!functionDef->getOptionalArgs().empty()) {
         for (const auto &defArg: functionDef->getOptionalArgs()) {
-            functionGenerator->addVariable(defArg->getName(),
-                                           builder->CreateAlloca(voidpTy, nullptr, defArg->getName() + "_alloca"));
+            auto *alloca = builder->CreateAlloca(voidpTy, nullptr, defArg->getName() + "_alloca");
+            emmitLocalVariableDebugInfo(alloca, defArg->getName(), functionDef->row, functionDef->col);
+            functionGenerator->addVariable(defArg->getName(), alloca);
         }
         int n = functionDef->getRequiredArgsPrefix().size() + functionDef->getRequiredArgsSuffix().size() + 1;
         int i = functionDef->getRequiredArgsPrefix().size();
@@ -132,6 +137,7 @@ void PreambleGenerator::codegenExtractOptionalArgs() {
                 builder->SetInsertPoint(absent);
                 assert(defArg->getDefaultValue() && "optional args must have default value");
                 auto *v = codegenStatement(defArg->getDefaultValue());
+                emmitLocation(functionDef);
                 builder->CreateStore(v, alloca);
                 prevAbsent = builder->GetInsertBlock();
             }
@@ -158,6 +164,7 @@ void PreambleGenerator::codegenArgumentAllocations() {
     int i = 0;
     for (const auto &argName: functionDef->getRequiredArgsPrefix()) {
         auto *argPtr = builder->CreateGEP(voidpTy, argvArray, {builder->getInt32(i)}, argName + "_ptr");
+        emmitLocalVariableDebugInfo(argPtr, argName, functionDef->row, functionDef->col);
         functionGenerator->addVariable(argName, argPtr);
         i++;
     }
@@ -166,6 +173,7 @@ void PreambleGenerator::codegenArgumentAllocations() {
     for (const auto &argName: functionDef->getRequiredArgsSuffix()) {
         auto *pos = builder->CreateSub(argcArg, builder->getInt32(j));
         auto *argPtr = builder->CreateGEP(voidpTy, argvArray, {pos}, argName + "_ptr");
+        emmitLocalVariableDebugInfo(argPtr, argName, functionDef->row, functionDef->col);
         functionGenerator->addVariable(argName, argPtr);
         j--;
     }
@@ -174,6 +182,7 @@ void PreambleGenerator::codegenArgumentAllocations() {
 void PreambleGenerator::codegenExtractSpecialArgs() {
     if (!functionDef->getBlockArg().empty()) {
         auto *varPtr = builder->CreateThreadLocalAddress(module->getCurrentProc());
+        emmitLocalVariableDebugInfo(varPtr, functionDef->getBlockArg(), functionDef->row, functionDef->col);
         functionGenerator->addVariable(functionDef->getBlockArg(), varPtr);
     }
 
@@ -218,18 +227,22 @@ void PreambleGenerator::codegenArgcBoundariesCheck() {
 }
 
 void PreambleGenerator::codegenDirectArgsExtract() {
+    int argNo = 2;
     for (const auto &defArg: functionDef->getRequiredArgsPrefix()) {
         auto *argAlloca = builder->CreateAlloca(voidpTy, nullptr, defArg + "_alloca");
+        emmitLocalVariableDebugInfo(argAlloca, defArg, functionDef->row, functionDef->col);
         builder->CreateStore(argsBegin, argAlloca);
         argsBegin->setName(defArg);
         functionGenerator->addVariable(defArg, argAlloca);
         argsBegin++;
+        argNo++;
     }
 }
 
 void PreambleGenerator::codegenSelfExtract() {
     auto selfArg = argsBegin;
     auto *selfAlloca = builder->CreateAlloca(voidpTy, nullptr, "self_alloca");
+    emmitLocalVariableDebugInfo(selfAlloca, "self", functionDef->row, functionDef->col);
     builder->CreateStore(selfArg, selfAlloca);
     functionGenerator->addVariable("self", selfAlloca);
     selfArg->setName("self");
