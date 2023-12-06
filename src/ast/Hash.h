@@ -13,7 +13,7 @@ public:
     explicit Hash(std::vector<std::pair<Statement *, Statement *>> hash)
             : Statement(STMT_HASH), hash(std::move(hash)) {}
 
-    inline const std::vector<std::pair<Statement *, Statement *>> &getHash() const {
+    const std::vector<std::pair<Statement *, Statement *>> &getHash() const {
         return hash;
     }
 

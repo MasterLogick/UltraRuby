@@ -11,15 +11,15 @@ class For : public Statement {
 public:
     For(Statement *var, Statement *expr, Statement *body) : Statement(STMT_FOR), var(var), expr(expr), body(body) {}
 
-    inline Statement *getVar() const {
+    Statement *getVar() const {
         return var;
     }
 
-    inline Statement *getExpr() const {
+    Statement *getExpr() const {
         return expr;
     }
 
-    inline Statement *getBody() const {
+    Statement *getBody() const {
         return body;
     }
 

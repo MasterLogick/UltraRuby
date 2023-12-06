@@ -11,11 +11,11 @@ class CaseWhereBlock {
 public:
     CaseWhereBlock(Statement *cond, Block *block) : cond(cond), block(block) {}
 
-    inline Statement *getCond() const {
+    Statement *getCond() const {
         return cond;
     }
 
-    inline Block *getBlock() const {
+    Block *getBlock() const {
         return block;
     }
 

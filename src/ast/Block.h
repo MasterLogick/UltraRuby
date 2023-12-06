@@ -12,7 +12,7 @@ class Block : public Statement {
 public:
     explicit Block(std::vector<AST::Statement *> list) : Statement(STMT_BLOCK), list(std::move(list)) {}
 
-    inline const std::vector<AST::Statement *> &getList() const {
+    const std::vector<AST::Statement *> &getList() const {
         return list;
     }
 

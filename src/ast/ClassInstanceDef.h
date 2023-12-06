@@ -12,11 +12,11 @@ public:
     ClassInstanceDef(AST::Statement *instance, AST::Block *definition)
             : Statement(STMT_CLASS_INSTANCE_DEF), instance(instance), definition(definition) {}
 
-    inline AST::Statement *getInstance() const {
+    AST::Statement *getInstance() const {
         return instance;
     }
 
-    inline AST::Block *getDefinition() const {
+    AST::Block *getDefinition() const {
         return definition;
     }
 

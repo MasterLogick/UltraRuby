@@ -11,7 +11,7 @@ class Exception : std::exception {
 public:
     Exception(Object *exception) : exception(exception) {}
 
-    inline Object *getException() const {
+    Object *getException() const {
         return exception;
     }
 

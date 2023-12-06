@@ -11,7 +11,7 @@ class FloatConst : public Statement {
 public:
     explicit FloatConst(std::string val) : Statement(STMT_FLOAT_CONST), val(std::move(val)) {}
 
-    inline const std::string &getVal() const {
+    const std::string &getVal() const {
         return val;
     }
 

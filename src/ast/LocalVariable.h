@@ -11,7 +11,7 @@ class LocalVariable : public Statement {
 public:
     explicit LocalVariable(std::string name) : name(std::move(name)), Statement(STMT_LOCAL_VARIABLE) {}
 
-    inline const std::string &getName() const {
+    const std::string &getName() const {
         return name;
     }
 

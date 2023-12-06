@@ -12,7 +12,7 @@ class Array : public Statement {
 public:
     Array(std::vector<Statement *> elements) : Statement(STMT_ARRAY), elements(std::move(elements)) {}
 
-    inline const std::vector<Statement *> &getElements() const {
+    const std::vector<Statement *> &getElements() const {
         return elements;
     }
 

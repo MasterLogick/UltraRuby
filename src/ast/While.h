@@ -11,11 +11,11 @@ class While : public Statement {
 public:
     While(Statement *condition, Statement *body) : Statement(STMT_WHILE), condition(condition), body(body) {}
 
-    inline Statement *getCondition() const {
+    Statement *getCondition() const {
         return condition;
     }
 
-    inline Statement *getBody() const {
+    Statement *getBody() const {
         return body;
     }
 

@@ -12,15 +12,15 @@ public:
     If(Statement *condition, Statement *trueBranch, Statement *falseBranch)
             : Statement(STMT_IF), condition(condition), trueBranch(trueBranch), falseBranch(falseBranch) {}
 
-    inline Statement *getCondition() const {
+    Statement *getCondition() const {
         return condition;
     }
 
-    inline Statement *getTrueBranch() const {
+    Statement *getTrueBranch() const {
         return trueBranch;
     }
 
-    inline Statement *getFalseBranch() const {
+    Statement *getFalseBranch() const {
         return falseBranch;
     }
 

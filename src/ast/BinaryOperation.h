@@ -13,15 +13,15 @@ public:
     BinaryOperation(OperationType op, Statement *left, Statement *right)
             : Statement(STMT_BIN_OP), op(op), left(left), right(right) {}
 
-    inline OperationType getOperator() const {
+    OperationType getOperator() const {
         return op;
     }
 
-    inline Statement *getLeft() const {
+    Statement *getLeft() const {
         return left;
     }
 
-    inline Statement *getRight() const {
+    Statement *getRight() const {
         return right;
     }
 

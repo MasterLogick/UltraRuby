@@ -13,11 +13,11 @@ public:
     explicit UnaryOperation(OperationType op, AST::Statement *expr)
             : Statement(STMT_UN_OP), op(op), expr(expr) {}
 
-    inline OperationType getOp() const {
+    OperationType getOp() const {
         return op;
     }
 
-    inline AST::Statement *getExpr() const {
+    AST::Statement *getExpr() const {
         return expr;
     }
 

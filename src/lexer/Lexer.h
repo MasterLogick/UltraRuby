@@ -18,7 +18,7 @@ public:
 
     void emmitToken();
 
-    inline TokenQueue *getQueue() {
+    TokenQueue *getQueue() {
         return &queue;
     }
 

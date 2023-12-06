@@ -11,7 +11,7 @@ class Return : public Statement {
 public:
     Return(CallArgs *callArgs) : Statement(STMT_RETURN), callArgs(callArgs) {}
 
-    inline CallArgs *getCallArgs() const {
+    CallArgs *getCallArgs() const {
         return callArgs;
     }
 

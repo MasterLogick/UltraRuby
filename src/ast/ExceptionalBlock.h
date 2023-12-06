@@ -21,15 +21,15 @@ public:
             rescues(std::move(rescues)),
             ensureBlock(ensureBlock) {}
 
-    inline Block *getMainBlock() const {
+    Block *getMainBlock() const {
         return mainBlock;
     }
 
-    inline const std::vector<Rescue *> &getRescues() const {
+    const std::vector<Rescue *> &getRescues() const {
         return rescues;
     }
 
-    inline Block *getEnsureBlock() const {
+    Block *getEnsureBlock() const {
         return ensureBlock;
     }
 

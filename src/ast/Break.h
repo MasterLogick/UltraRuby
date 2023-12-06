@@ -11,7 +11,7 @@ class Break : public Statement {
 public:
     Break(CallArgs *callArgs) : Statement(STMT_BREAK), callArgs(callArgs) {}
 
-    inline CallArgs *getCallArgs() const {
+    CallArgs *getCallArgs() const {
         return callArgs;
     }
 

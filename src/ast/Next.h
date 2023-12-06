@@ -10,7 +10,7 @@ class Next : public Statement {
 public:
     Next(CallArgs *callArgs) : Statement(STMT_NEXT), callArgs(callArgs) {}
 
-    inline CallArgs *getCallArgs() const {
+    CallArgs *getCallArgs() const {
         return callArgs;
     }
 

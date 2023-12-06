@@ -10,7 +10,7 @@ class BoolConst : public Statement {
 public:
     BoolConst(bool val) : Statement(StatementType::STMT_BOOL_CONST), val(val) {}
 
-    inline bool getVal() const {
+    bool getVal() const {
         return val;
     }
 

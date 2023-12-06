@@ -14,11 +14,11 @@ public:
     Case(Statement *arg, std::vector<CaseWhereBlock *> cases)
             : Statement(STMT_CASE), arg(arg), cases(std::move(cases)) {}
 
-    inline Statement *getArg() const {
+    Statement *getArg() const {
         return arg;
     }
 
-    inline const std::vector<CaseWhereBlock *> &getCases() const {
+    const std::vector<CaseWhereBlock *> &getCases() const {
         return cases;
     }
 

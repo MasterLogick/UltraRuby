@@ -12,7 +12,7 @@ class Yield : public Statement {
 public:
     Yield(AST::CallArgs *args) : Statement(STMT_YIELD), args(args) {}
 
-    inline AST::CallArgs *getArgs() const {
+    AST::CallArgs *getArgs() const {
         return args;
     }
 
