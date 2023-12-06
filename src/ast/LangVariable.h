@@ -13,7 +13,7 @@ public:
         LVT_NIL
     };
 
-    explicit LangVariable(Type type) : Statement(STMT_LANG_VARIABLE),type(type) {}
+    LangVariable(Type type, int row, int col) : Statement(STMT_LANG_VARIABLE, row, col), type(type) {}
 
     Type getType() const {
         return type;

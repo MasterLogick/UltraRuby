@@ -9,7 +9,7 @@ namespace AST {
 
 class IntegerConst : public Statement {
 public:
-    explicit IntegerConst(std::string val) : Statement(STMT_INT_CONST), val(std::move(val)) {}
+    IntegerConst(std::string val, int row, int col) : Statement(STMT_INT_CONST, row, col), val(std::move(val)) {}
 
     const std::string &getVal() const {
         return val;

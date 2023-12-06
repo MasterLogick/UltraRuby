@@ -3,18 +3,16 @@
 
 #include <memory>
 #include <utility>
-#include "LexerInput.h"
+#include "StringLexerInput.h"
 #include "TokenType.h"
 #include "../ast/OperationType.h"
 #include "TokenQueue.h"
+#include "StringLexerInput.h"
 
 namespace UltraRuby::Lexer {
 class Lexer {
 public:
-    explicit Lexer(std::shared_ptr<LexerInput> input) : input(std::move(input)), lastChar(' '), queue(this) {
-        emmitToken();
-        queue.removeLast();
-    }
+    explicit Lexer(std::shared_ptr<StringLexerInput> input);
 
     void emmitToken();
 
@@ -23,11 +21,12 @@ public:
     }
 
 private:
-    static void logError(const char *log);
-
+    std::shared_ptr<StringLexerInput> input;
     TokenQueue queue;
-    std::shared_ptr<LexerInput> input;
+    std::vector<int> lineBeginnings;
     int lastChar;
+    int row;
+    bool eofReached;
 };
 
 }

@@ -10,8 +10,8 @@ namespace AST {
 
 class UnaryOperation : public Statement {
 public:
-    explicit UnaryOperation(OperationType op, AST::Statement *expr)
-            : Statement(STMT_UN_OP), op(op), expr(expr) {}
+    UnaryOperation(OperationType op, AST::Statement *expr, int row, int col)
+            : Statement(STMT_UN_OP, row, col), op(op), expr(expr) {}
 
     OperationType getOp() const {
         return op;

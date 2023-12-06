@@ -10,7 +10,8 @@ namespace AST {
 
 class Block : public Statement {
 public:
-    explicit Block(std::vector<AST::Statement *> list) : Statement(STMT_BLOCK), list(std::move(list)) {}
+    Block(std::vector<AST::Statement *> list, int row, int col) :
+            Statement(STMT_BLOCK, row, col), list(std::move(list)) {}
 
     const std::vector<AST::Statement *> &getList() const {
         return list;

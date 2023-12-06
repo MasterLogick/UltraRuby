@@ -9,7 +9,8 @@ namespace AST {
 
 class While : public Statement {
 public:
-    While(Statement *condition, Statement *body) : Statement(STMT_WHILE), condition(condition), body(body) {}
+    While(Statement *condition, Statement *body, int row, int col) :
+            Statement(STMT_WHILE, row, col), condition(condition), body(body) {}
 
     Statement *getCondition() const {
         return condition;

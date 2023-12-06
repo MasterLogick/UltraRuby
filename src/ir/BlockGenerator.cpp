@@ -99,7 +99,7 @@ llvm::Value *BlockGenerator::codegenStatement(AST::Statement *statement) {
         case AST::STMT_INSTANCE_VARIABLE:
             return codegenInstanceVariable(reinterpret_cast<AST::InstanceVariable *>(statement));
         case AST::STMT_UNKNOWN:
-            throw CodegenException("Unknown statement");
+            throw CodegenException("Unknown statement", statement->row, statement->col);
         case AST::STMT_LANG_VARIABLE:
             return codegenLangVariable(reinterpret_cast<AST::LangVariable *>(statement));
         case AST::STMT_CONSTANT_REF:
@@ -232,12 +232,12 @@ const std::map<AST::OperationType, std::string> ops = {
 
 llvm::Value *BlockGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp) {
     if (!ops.contains(binOp->getOperator())) {
-        throw CodegenException("unexpected binary operator");
+        throw CodegenException("unexpected binary operator", binOp->row, binOp->col);
     }
     std::string opLabel = ops.at(binOp->getOperator());
     if (AST::BIN_OP_REGION_START <= binOp->getOperator() && binOp->getOperator() < AST::BIN_OP_ASSIGNMENT_START) {
         AST::CallArgs args({binOp->getRight()}, {}, nullptr, false, true);
-        AST::Call call(opLabel, &args, binOp->getLeft());
+        AST::Call call(opLabel, &args, binOp->getLeft(), binOp->row, binOp->col);
         return codegenLangCall(module->getLangObjectCall()[1],
                                {codegenStatement(binOp->getLeft()), codegenSymbol(opLabel),
                                 codegenStatement(binOp->getRight())});
@@ -262,11 +262,11 @@ llvm::Value *BlockGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp)
                 auto *callArgs = call->getArgs();
                 if ((callArgs->hasParenthesis() && !call->getName().empty()) || callArgs->getBlock() ||
                     (!callArgs->hasBrackets() && (!callArgs->getArgs().empty()))) {
-                    throw CodegenException("unexpected operator-assignment");
+                    throw CodegenException("unexpected operator-assignment", call->row, call->col);
                 }
                 if (!callArgs->getNamedArgs().empty()) {
                     //todo
-                    throw CodegenException("unimplemented");
+                    throw CodegenException("unimplemented", call->row, call->col);
                 }
                 auto *lhsContainer = call->getObject();
                 auto *lhsContainerVal = lhsContainer != nullptr ? codegenStatement(lhsContainer) : codegenSelf();
@@ -288,12 +288,12 @@ llvm::Value *BlockGenerator::codegenBinaryOperation(AST::BinaryOperation *binOp)
                     return codegenCall(lhsContainerVal, codegenSymbol("[]="), bracketArgs.size(), bracketArgs);
                 } else {
                     AST::CallArgs setCallArgs({binOp->getRight()}, {}, nullptr, false, true);
-                    AST::Call setCall(call->getName() + "=", &setCallArgs, nullptr);
+                    AST::Call setCall(call->getName() + "=", &setCallArgs, nullptr, binOp->row, binOp->col);
                     return codegenCall(lhsContainerVal, &setCall);
                 }
             }
             default: {
-                throw CodegenException("unexpected left hand side");
+                throw CodegenException("unexpected left hand side", left->row, left->col);
             }
         }
     }
@@ -319,15 +319,11 @@ llvm::Value *BlockGenerator::codegenBlock(AST::Block *block) {
 }
 
 llvm::Value *BlockGenerator::codegenLocalVariable(AST::LocalVariable *variable) {
-    // todo reconsider
-    if (variable->getName() == "nil") {
-        return builder->CreateLoad(voidpTy, module->getNilConst());
-    }
     auto *varPtr = functionGenerator->getVariable(variable->getName());
     if (varPtr == nullptr) {
-        AST::LangVariable self(AST::LangVariable::LVT_SELF);
+        AST::LangVariable self(AST::LangVariable::LVT_SELF, variable->row, variable->col);
         AST::CallArgs callArgs({}, {}, nullptr, false, true);
-        AST::Call c(variable->getName(), &callArgs, &self);
+        AST::Call c(variable->getName(), &callArgs, &self, variable->row, variable->col);
         return codegenCall(&c);
     }
     return builder->CreateLoad(voidpTy, varPtr, variable->getName());
@@ -353,11 +349,11 @@ llvm::Value *BlockGenerator::codegenUnaryOperation(AST::UnaryOperation *unaryOpe
             op = "*@";
             break;
         default:
-            throw CodegenException("not an unary operation");
+            throw CodegenException("not an unary operation", unaryOperation->row, unaryOperation->col);
     }
     AST::CallArgs args(std::vector<AST::Statement *>(), std::map<std::string, AST::Statement *>(), nullptr, false,
                        true);
-    AST::Call call(op, &args, unaryOperation->getExpr());
+    AST::Call call(op, &args, unaryOperation->getExpr(), unaryOperation->row, unaryOperation->col);
     return codegenCall(&call);
 }
 
@@ -426,12 +422,13 @@ llvm::Value *BlockGenerator::codegenClassDef(AST::ClassDef *classDef) {
             break;
         }
         default: {
-            throw CodegenException("expected class name");
+            throw CodegenException("expected class name", classPos->row, classPos->col);
         }
     }
 
     AST::FunctionDef functionDef("classDef:" + name + std::to_string(module->getNextSuffix()),
-                                 classDef->getDefinition());
+                                 classDef->getDefinition(), classDef->getDefinition()->row,
+                                 classDef->getDefinition()->col);
     FunctionGenerator fg(module, &functionDef);
     fg.emmitIR();
     auto *superclass = classDef->getSuperclass();
@@ -475,12 +472,13 @@ llvm::Value *BlockGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
             break;
         }
         default: {
-            throw CodegenException("expected class name");
+            throw CodegenException("expected class name", modulePos->row, modulePos->col);
         }
     }
 
     AST::FunctionDef functionDef("moduleDef:" + name + std::to_string(module->getNextSuffix()),
-                                 moduleDef->getDefinition());
+                                 moduleDef->getDefinition(), moduleDef->getDefinition()->row,
+                                 moduleDef->getDefinition()->col);
     FunctionGenerator fg(module, &functionDef);
     fg.emmitIR();
     return codegenLangCall(module->getLangObjectDefineModule(), {outerModule, codegenSymbol(name), fg.getFunc()});
@@ -488,9 +486,10 @@ llvm::Value *BlockGenerator::codegenModuleDef(AST::ModuleDef *moduleDef) {
 
 llvm::Value *BlockGenerator::codegenFunctionDef(AST::FunctionDef *functionDef) {
     AST::FunctionDef function("func:" + functionDef->getName(), functionDef->getBody(),
-                              functionDef->getRequiredArgsPrefix(), functionDef->getOptionalArgs(),
-                              functionDef->getVariadicArg(), functionDef->getRequiredArgsSuffix(),
-                              functionDef->getNamedArgs(), functionDef->getBlockArg(), functionDef->getSingleton());
+                              functionDef->row, functionDef->col, functionDef->getRequiredArgsPrefix(),
+                              functionDef->getOptionalArgs(), functionDef->getVariadicArg(),
+                              functionDef->getRequiredArgsSuffix(), functionDef->getNamedArgs(),
+                              functionDef->getBlockArg(), functionDef->getSingleton());
     FunctionGenerator fg(module, &function);
     fg.emmitIR();
 
@@ -539,7 +538,8 @@ llvm::Value *BlockGenerator::codegenWhile(AST::While *whileAst) {
 
 llvm::Value *BlockGenerator::codegenClassInstanceDef(AST::ClassInstanceDef *classInstanceDef) {
     AST::FunctionDef functionDef("classInstance:" + std::to_string(module->getNextSuffix()),
-                                 classInstanceDef->getDefinition());
+                                 classInstanceDef->getDefinition(), classInstanceDef->getDefinition()->row,
+                                 classInstanceDef->getDefinition()->col);
     FunctionGenerator fg(module, &functionDef);
     fg.emmitIR();
     std::vector<llvm::Value *> callArgs{codegenStatement(classInstanceDef->getInstance()), fg.getFunc()};
@@ -595,16 +595,18 @@ llvm::Value *BlockGenerator::codegenCase(AST::Case *caseAst) {
     auto &vec = caseAst->getCases();
     std::vector<AST::If> ifs;
     std::vector<AST::BinaryOperation> ops;
-    ifs.emplace_back(vec.back()->getCond(), vec.back()->getBlock(), nullptr);
+    ifs.emplace_back(vec.back()->getCond(), vec.back()->getBlock(), nullptr, vec.back()->getCond()->row,
+                     vec.back()->getCond()->col);
     for (int i = vec.size() - 2; i >= 0; ++i) {
         AST::Statement *cond;
         if (arg == nullptr) {
             cond = vec[i]->getCond();
         } else {
             //todo check order
-            cond = &ops.emplace_back(AST::OperationType::BIN_OP_CASE_EQUAL, arg, vec[i]->getCond());
+            cond = &ops.emplace_back(AST::OperationType::BIN_OP_CASE_EQUAL, arg, vec[i]->getCond(),
+                                     vec[i]->getCond()->row, vec[i]->getCond()->col);
         }
-        ifs.emplace_back(cond, vec[i]->getBlock(), &ifs.back());
+        ifs.emplace_back(cond, vec[i]->getBlock(), &ifs.back(), cond->row, cond->col);
     }
     return codegenIf(&ifs.back());
 }
@@ -735,11 +737,11 @@ llvm::Value *BlockGenerator::codegenRetry() {
 llvm::Value *BlockGenerator::codegenReturn(AST::Return *returnAst) {
     auto &callArgs = returnAst->getCallArgs()->getArgs();
     if (callArgs.empty()) {
-        builder->CreateRet(builder->CreateLoad(voidpTy, builder->CreateLoad(voidpTy, module->getNilConst())));
+        builder->CreateRet(builder->CreateLoad(voidpTy, module->getNilConst()));
     } else if (callArgs.size() == 1) {
         builder->CreateRet(codegenStatement(callArgs[0]));
     } else {
-        AST::Array arr(callArgs);
+        AST::Array arr(callArgs, callArgs[0]->row, callArgs[0]->col);
         builder->CreateRet(codegenArray(&arr));
     }
     //todo handle terminated blocks
@@ -764,7 +766,7 @@ llvm::Value *BlockGenerator::codegenGetObjectClass(llvm::Value *object) {
 }
 
 llvm::Value *BlockGenerator::codegenSelf() {
-    AST::LangVariable self(AST::LangVariable::LVT_SELF);
+    AST::LangVariable self(AST::LangVariable::LVT_SELF, -1, -1);
     return codegenLangVariable(&self);
 }
 

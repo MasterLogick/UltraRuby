@@ -8,7 +8,7 @@ namespace AST {
 
 class YieldSelf : public Statement {
 public:
-    YieldSelf() : Statement(STMT_YIELD_SELF) {}
+    YieldSelf(int row, int col) : Statement(STMT_YIELD_SELF, row, col) {}
 };
 
 } // UltraRuby

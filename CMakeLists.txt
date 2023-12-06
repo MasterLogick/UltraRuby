@@ -14,7 +14,6 @@ set(CMAKE_CXX_STANDARD 20)
 add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lexer/Lexer.h
         src/lexer/TokenType.h
-        src/lexer/LexerInput.h
         src/ast/Statement.h
         src/ast/LocalVariable.h
         src/ast/BinaryOperation.h
@@ -23,11 +22,9 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/parser/Parser.cpp
         src/parser/Parser.h
         src/ast/OperationType.h
-        src/lexer/input/StringLexerInput.cpp
-        src/lexer/input/StringLexerInput.h
+        src/lexer/StringLexerInput.cpp
+        src/lexer/StringLexerInput.h
         src/ast/StatementType.h
-        src/lexer/input/FileLexerInput.cpp
-        src/lexer/input/FileLexerInput.h
         src/lexer/TokenType.cpp
         src/ast/ClassDef.h
         src/ast/UnaryOperation.h
@@ -94,7 +91,6 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/lang/Exception.h
         src/ast/Rescue.h
         src/ast/InstanceVariable.h
-        src/ast/DefinitionName.h
         src/ast/LangVariable.h
         src/ast/ConstantRef.h
         src/parser/ParseException.h
@@ -114,10 +110,11 @@ add_library(UltraRuby SHARED src/lexer/Lexer.cpp
         src/ir/FunctionGenerator.h
         src/ir/CodeModule.cpp
         src/ir/CodeModule.h
-        src/ir/CodegenException.cpp
         src/ir/CodegenException.h
         src/ir/PreambleGenerator.cpp
         src/ir/PreambleGenerator.h
+        src/lexer/LexerException.h
+        src/lexer/SourceCodeException.h
 )
 
 target_link_libraries(UltraRuby PUBLIC LLVM lldELF lldCommon)

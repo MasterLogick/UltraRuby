@@ -9,7 +9,8 @@ namespace AST {
 
 class For : public Statement {
 public:
-    For(Statement *var, Statement *expr, Statement *body) : Statement(STMT_FOR), var(var), expr(expr), body(body) {}
+    For(Statement *var, Statement *expr, Statement *body, int row, int col) : Statement(STMT_FOR, row, col), var(var),
+                                                                              expr(expr), body(body) {}
 
     Statement *getVar() const {
         return var;

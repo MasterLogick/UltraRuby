@@ -9,7 +9,8 @@ namespace AST {
 
 class LocalVariable : public Statement {
 public:
-    explicit LocalVariable(std::string name) : name(std::move(name)), Statement(STMT_LOCAL_VARIABLE) {}
+    LocalVariable(std::string name, int row, int col) :
+            Statement(STMT_LOCAL_VARIABLE, row, col), name(std::move(name)) {}
 
     const std::string &getName() const {
         return name;

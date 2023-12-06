@@ -9,7 +9,7 @@ namespace AST {
 
 class String : public Statement {
 public:
-    explicit String(std::string str) : Statement(STMT_STRING), str(std::move(str)) {}
+    String(std::string str, int row, int col) : Statement(STMT_STRING, row, col), str(std::move(str)) {}
 
     const std::string &getStr() const {
         return str;

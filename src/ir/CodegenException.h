@@ -1,22 +1,14 @@
 #ifndef ULTRA_RUBY_CODEGENEXCEPTION_H
 #define ULTRA_RUBY_CODEGENEXCEPTION_H
 
-#include <exception>
-#include <string>
+#include "../lexer/SourceCodeException.h"
 
 namespace UltraRuby {
 namespace IR {
 
-class CodegenException : public std::exception {
+class CodegenException : public Lexer::SourceCodeException {
 public:
-    explicit CodegenException(std::string reason) : reason(std::move(reason)) {}
-
-    const char *what() const noexcept override {
-        return reason.c_str();
-    }
-
-private:
-    std::string reason;
+    CodegenException(const std::string &reason, int row, int col) : SourceCodeException(reason, row, col) {}
 };
 
 } // UltraRuby

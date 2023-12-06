@@ -8,7 +8,7 @@ namespace UltraRuby {
 namespace AST {
 class Next : public Statement {
 public:
-    Next(CallArgs *callArgs) : Statement(STMT_NEXT), callArgs(callArgs) {}
+    Next(CallArgs *callArgs, int row, int col) : Statement(STMT_NEXT, row, col), callArgs(callArgs) {}
 
     CallArgs *getCallArgs() const {
         return callArgs;

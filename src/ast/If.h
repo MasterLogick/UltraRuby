@@ -9,8 +9,8 @@ namespace AST {
 
 class If : public Statement {
 public:
-    If(Statement *condition, Statement *trueBranch, Statement *falseBranch)
-            : Statement(STMT_IF), condition(condition), trueBranch(trueBranch), falseBranch(falseBranch) {}
+    If(Statement *condition, Statement *trueBranch, Statement *falseBranch, int row, int col)
+            : Statement(STMT_IF, row, col), condition(condition), trueBranch(trueBranch), falseBranch(falseBranch) {}
 
     Statement *getCondition() const {
         return condition;

@@ -13,8 +13,8 @@ namespace AST {
 
 class Call : public Statement {
 public:
-    Call(std::string name, CallArgs *args, Statement *object)
-            : Statement(STMT_CALL), name(std::move(name)), object(object), args(args) {
+    Call(std::string name, CallArgs *args, Statement *object, int row, int col)
+            : Statement(STMT_CALL, row, col), name(std::move(name)), object(object), args(args) {
         assert((args->hasBrackets() && name.empty() || !args->hasBrackets()) && "bracket call must have empty name");
     }
 

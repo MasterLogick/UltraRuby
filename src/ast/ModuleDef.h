@@ -5,15 +5,14 @@
 #include <memory>
 #include <vector>
 #include "Statement.h"
-#include "DefinitionName.h"
 
 namespace UltraRuby {
 namespace AST {
 
 class ModuleDef : public Statement {
 public:
-    ModuleDef(Statement *modulePos, AST::Block *definition)
-            : Statement(STMT_MODULE_DEF), modulePos(modulePos), definition(definition) {}
+    ModuleDef(Statement *modulePos, AST::Block *definition, int row, int col)
+            : Statement(STMT_MODULE_DEF, row, col), modulePos(modulePos), definition(definition) {}
 
     Statement *getModulePos() const {
         return modulePos;

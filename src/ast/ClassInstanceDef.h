@@ -9,8 +9,8 @@ namespace AST {
 
 class ClassInstanceDef : public Statement {
 public:
-    ClassInstanceDef(AST::Statement *instance, AST::Block *definition)
-            : Statement(STMT_CLASS_INSTANCE_DEF), instance(instance), definition(definition) {}
+    ClassInstanceDef(AST::Statement *instance, AST::Block *definition, int row, int col)
+            : Statement(STMT_CLASS_INSTANCE_DEF, row, col), instance(instance), definition(definition) {}
 
     AST::Statement *getInstance() const {
         return instance;

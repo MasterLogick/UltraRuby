@@ -12,6 +12,8 @@ struct Token {
     TokenType type = TOK_ERROR;
     AST::OperationType operation = AST::OP_UNKNOWN;
     std::string identifier;
+    int row;
+    int col;
 };
 
 } // UltraRuby

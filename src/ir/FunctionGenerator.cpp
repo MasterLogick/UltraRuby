@@ -13,7 +13,7 @@ FunctionGenerator::FunctionGenerator(CodeModule *module, AST::FunctionDef *funct
 void FunctionGenerator::emmitIR() {
     func = module->getLLVMModule()->getFunction(functionDef->getName());
     if (func != nullptr) {
-        throw CodegenException("function redeclaration");
+        throw CodegenException("function redeclaration", functionDef->row, functionDef->col);
     }
     auto *voidpTy = module->getVoidpTy();
 

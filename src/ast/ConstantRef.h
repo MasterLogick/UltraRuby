@@ -9,8 +9,8 @@ namespace AST {
 
 class ConstantRef : public Statement {
 public:
-    ConstantRef(Statement *holder, std::string name) :
-            Statement(STMT_CONSTANT_REF), holder(holder), name(std::move(name)) {}
+    ConstantRef(Statement *holder, std::string name, int row, int col) :
+            Statement(STMT_CONSTANT_REF, row, col), holder(holder), name(std::move(name)) {}
 
     Statement *getHolder() const {
         return holder;

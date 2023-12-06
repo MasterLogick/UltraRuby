@@ -14,9 +14,11 @@ public:
     ExceptionalBlock(
             Block *mainBlock,
             std::vector<Rescue *> rescues,
-            Block *ensureBlock
+            Block *ensureBlock,
+            int row,
+            int col
     ) :
-            Statement(STMT_EXCEPTIONAL_BLOCK),
+            Statement(STMT_EXCEPTIONAL_BLOCK, row, col),
             mainBlock(mainBlock),
             rescues(std::move(rescues)),
             ensureBlock(ensureBlock) {}

@@ -8,7 +8,7 @@ namespace AST {
 
 class Retry : public Statement {
 public:
-    Retry() : Statement(STMT_RETRY) {}
+    Retry(int row, int col) : Statement(STMT_RETRY, row, col) {}
 };
 
 } // UltraRuby

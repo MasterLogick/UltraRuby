@@ -9,7 +9,7 @@ namespace AST {
 
 class FloatConst : public Statement {
 public:
-    explicit FloatConst(std::string val) : Statement(STMT_FLOAT_CONST), val(std::move(val)) {}
+    FloatConst(std::string val, int row, int col) : Statement(STMT_FLOAT_CONST, row, col), val(std::move(val)) {}
 
     const std::string &getVal() const {
         return val;

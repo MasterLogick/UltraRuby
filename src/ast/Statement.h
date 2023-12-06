@@ -6,11 +6,13 @@
 namespace UltraRuby::AST {
 class Statement {
 public:
-    explicit Statement(StatementType type) : type(type) {}
+    Statement(StatementType type, int row, int col) : type(type), row(row), col(col) {}
 
     virtual ~Statement() = default;
 
     const StatementType type;
+    int row;
+    int col;
 };
 
 }

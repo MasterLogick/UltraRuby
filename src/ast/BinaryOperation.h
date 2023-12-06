@@ -10,8 +10,8 @@ namespace AST {
 
 class BinaryOperation : public Statement {
 public:
-    BinaryOperation(OperationType op, Statement *left, Statement *right)
-            : Statement(STMT_BIN_OP), op(op), left(left), right(right) {}
+    BinaryOperation(OperationType op, Statement *left, Statement *right, int row, int col)
+            : Statement(STMT_BIN_OP, row, col), op(op), left(left), right(right) {}
 
     OperationType getOperator() const {
         return op;

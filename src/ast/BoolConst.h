@@ -8,7 +8,7 @@ namespace AST {
 
 class BoolConst : public Statement {
 public:
-    BoolConst(bool val) : Statement(StatementType::STMT_BOOL_CONST), val(val) {}
+    BoolConst(bool val, int row, int col) : Statement(STMT_BOOL_CONST, row, col), val(val) {}
 
     bool getVal() const {
         return val;

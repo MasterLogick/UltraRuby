@@ -10,8 +10,8 @@ namespace AST {
 
 class Hash : public Statement {
 public:
-    explicit Hash(std::vector<std::pair<Statement *, Statement *>> hash)
-            : Statement(STMT_HASH), hash(std::move(hash)) {}
+    Hash(std::vector<std::pair<Statement *, Statement *>> hash, int row, int col)
+            : Statement(STMT_HASH, row, col), hash(std::move(hash)) {}
 
     const std::vector<std::pair<Statement *, Statement *>> &getHash() const {
         return hash;

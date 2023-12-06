@@ -22,26 +22,34 @@ public:
         return tokens[ptr].operation;
     }
 
+    int getRow() const {
+        return tokens[ptr].row;
+    }
+
+    int getCol() const {
+        return tokens[ptr].col;
+    }
+
     TokenType getNextToken();
 
     void removeLast() {
         tokens.erase(tokens.end()--);
     }
 
-    void pushBack(TokenType type) {
-        tokens.emplace_back(type, AST::OP_UNKNOWN, std::string());
+    void pushBack(TokenType type, int row, int col) {
+        tokens.emplace_back(type, AST::OP_UNKNOWN, std::string(), row, col);
     }
 
-    void pushBack(TokenType type, AST::OperationType opType) {
-        tokens.emplace_back(type, opType, std::string());
+    void pushBack(TokenType type, AST::OperationType opType, int row, int col) {
+        tokens.emplace_back(type, opType, std::string(), row, col);
     }
 
-    void pushBack(TokenType type, const std::string &val) {
-        tokens.emplace_back(type, AST::OP_UNKNOWN, val);
+    void pushBack(TokenType type, const std::string &val, int row, int col) {
+        tokens.emplace_back(type, AST::OP_UNKNOWN, val, row, col);
     }
 
-    void pushBack(TokenType type, std::string &&val) {
-        tokens.emplace_back(type, AST::OP_UNKNOWN, val);
+    void pushBack(TokenType type, std::string &&val, int row, int col) {
+        tokens.emplace_back(type, AST::OP_UNKNOWN, val, row, col);
     }
 
     TokenType getPrevToken() {

@@ -18,6 +18,8 @@ public:
     }
 
 private:
+    explicit String(std::string val);
+
     std::string val;
 };
 

@@ -15,7 +15,8 @@ public:
     CallArgs(std::vector<Statement *> args,
              std::map<std::string, Statement *> namedArgs,
              FunctionDef *block,
-             bool brackets, bool parenthesis)
+             bool brackets,
+             bool parenthesis)
             : args(std::move(args)),
               namedArgs(std::move(namedArgs)),
               block(block),

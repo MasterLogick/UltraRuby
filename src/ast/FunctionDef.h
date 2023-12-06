@@ -15,6 +15,8 @@ class FunctionDef : public Statement {
 public:
     FunctionDef(std::string name,
                 Block *body,
+                int row,
+                int col,
                 std::vector<std::string> requiredArgsPrefix = {},
                 std::vector<OptionalArg *> optionalArgs = {},
                 std::string variadicArg = "",
@@ -22,7 +24,7 @@ public:
                 std::vector<OptionalArg *> namedArgs = {},
                 std::string blockArg = "",
                 Statement *singleton = nullptr) :
-            Statement(STMT_FUNC_DEF),
+            Statement(STMT_FUNC_DEF, row, col),
             name(std::move(name)),
             requiredArgsPrefix(std::move(requiredArgsPrefix)),
             optionalArgs(std::move(optionalArgs)),

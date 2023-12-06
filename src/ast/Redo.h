@@ -9,7 +9,7 @@ namespace AST {
 
 class Redo : public Statement {
 public:
-    Redo() : Statement(STMT_REDO) {}
+    Redo(int row, int col) : Statement(STMT_REDO, row, col) {}
 };
 
 } // UltraRuby

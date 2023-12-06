@@ -10,7 +10,7 @@ namespace AST {
 
 class Yield : public Statement {
 public:
-    Yield(AST::CallArgs *args) : Statement(STMT_YIELD), args(args) {}
+    Yield(AST::CallArgs *args, int row, int col) : Statement(STMT_YIELD, row, col), args(args) {}
 
     AST::CallArgs *getArgs() const {
         return args;

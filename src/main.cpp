@@ -1,13 +1,12 @@
 #include <iostream>
 #include "lexer/Lexer.h"
-#include "lexer/input/StringLexerInput.h"
+#include "lexer/StringLexerInput.h"
 #include "parser/Parser.h"
 #include "ast/AST.h"
 #include "lang/BasicClasses.h"
 #include "lang/PrimaryConstants.h"
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/TargetParser/Host.h>
 #include "lang/Symbol.h"
 #include "loader/EmittedObject.h"
 #include "lang/Exception.h"
@@ -17,12 +16,13 @@
 #include "ir/CodeModule.h"
 #include "ir/FunctionGenerator.h"
 #include <dlfcn.h>
+#include <fstream>
 
 using namespace UltraRuby;
 
 Lang::Object *Uputs(Lang::Object *self, Lang::Object *arg) {
     if (arg) {
-        if (reinterpret_cast<uintptr_t>(self) > 0xffff && self->getObjectClass() == Lang::BasicClasses::StringClass) {
+        if (arg->getObjectClass() == Lang::BasicClasses::StringClass) {
             std::cout << reinterpret_cast<Lang::String *>(arg)->getVal() << std::endl;
         } else {
             std::cout << self << " " << arg << std::endl;
@@ -37,7 +37,11 @@ Lang::Object *Uraise(Lang::Object *self, Lang::Object *arg) {
     throw Lang::Exception(arg);
 }
 
-int main() {
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " filename" << std::endl;
+        return -1;
+    }
     Lang::BasicClasses::init();
     Lang::PrimaryConstants::init();
     Lang::Impl::NativeImplLoader::loadImpl();
@@ -46,57 +50,37 @@ int main() {
     llvm::InitializeNativeTargetAsmParser();
     llvm::InitializeNativeTargetAsmPrinter();
 
-    auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(R"(
-class T
-  def []=(a,b)
-    puts "#{self}[#{a}]=#{b}"
-  end
+    std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
+    auto size = file.tellg();
+    file.seekg(0, std::ios::beg);
 
-  def [](a)
-    puts "#{self}[#{a},#{c}]"
-    self
-  end
-
-  def +(b)
-    puts "#{self} + #{b}"
-  end
-
-  def b
-    puts "#{self}.b"
-    "123"
-  end
-
-  def a=(b)
-    puts "#{self}.a=#{b}"
-  end
-
-  def a
-    puts "#{self}.a"
-    "123"
-  end
-end
-
-T.new[T.new]+=T.new.b
-T.new.a*=5
-
-def test(a,b,c,d=1,e="wddwadwadwa", *argse,r,t,y,q:1,w:,u:1+2)
-end
-
-)");
+    std::vector<char> buffer(size);
+    if (!file.read(buffer.data(), size)) {
+        std::cerr << "could not read file" << std::endl;
+        return -1;
+    }
+    auto stringLexerInput = std::make_shared<Lexer::StringLexerInput>(std::string(buffer.data(), buffer.size()));
     auto lexer = std::make_shared<Lexer::Lexer>(stringLexerInput);
     auto parser = std::make_shared<Parser::Parser>(lexer->getQueue());
     AST::Block *block;
     try {
         block = parser->parseProgram();
-    } catch (Parser::ParseException &e) {
-        std::cout << "parsing exception: " << e.what() << std::endl;
+    } catch (Lexer::SourceCodeException &e) {
+        std::cout << "parsing exception: " << std::endl
+                  << argv[1] << e.what() << std::endl;
         return -1;
     }
     IR::CodeModule codeModule;
-    auto *topLevel = new AST::FunctionDef("top_required", block);
+    auto *topLevel = new AST::FunctionDef("top_required", block, 1, 1);
 
     IR::FunctionGenerator fg(&codeModule, topLevel);
-    fg.emmitIR();
+    try {
+        fg.emmitIR();
+    } catch (Lexer::SourceCodeException &e) {
+        std::cout << "parsing exception: " << std::endl
+                  << argv[1] << e.what() << std::endl;
+        return -1;
+    }
     fg.getFunc()->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
     codeModule.debugPrintModuleIR();

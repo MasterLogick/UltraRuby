@@ -11,8 +11,8 @@ namespace AST {
 
 class Case : public Statement {
 public:
-    Case(Statement *arg, std::vector<CaseWhereBlock *> cases)
-            : Statement(STMT_CASE), arg(arg), cases(std::move(cases)) {}
+    Case(Statement *arg, std::vector<CaseWhereBlock *> cases, int row, int col)
+            : Statement(STMT_CASE, row, col), arg(arg), cases(std::move(cases)) {}
 
     Statement *getArg() const {
         return arg;

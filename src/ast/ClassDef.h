@@ -6,15 +6,14 @@
 #include <utility>
 #include <vector>
 #include "Statement.h"
-#include "DefinitionName.h"
 
 namespace UltraRuby {
 namespace AST {
 
 class ClassDef : public Statement {
 public:
-    ClassDef(Statement* classPos, Statement *superclass, AST::Block *definition)
-            : Statement(STMT_CLASS_DEF), classPos(classPos), superclass(superclass), definition(definition) {}
+    ClassDef(Statement* classPos, Statement *superclass, AST::Block *definition, int row, int col)
+            : Statement(STMT_CLASS_DEF,row,col), classPos(classPos), superclass(superclass), definition(definition) {}
 
     Statement *getClassPos() const {
         return classPos;

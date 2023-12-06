@@ -9,7 +9,8 @@ namespace AST {
 
 class InstanceVariable : public Statement {
 public:
-    explicit InstanceVariable(std::string name) : Statement(STMT_INSTANCE_VARIABLE), name(std::move(name)) {}
+    InstanceVariable(std::string name, int row, int col) :
+            Statement(STMT_INSTANCE_VARIABLE, row, col), name(std::move(name)) {}
 
     const std::string &getName() const {
         return name;

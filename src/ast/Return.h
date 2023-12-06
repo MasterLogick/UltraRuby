@@ -9,7 +9,7 @@ namespace AST {
 
 class Return : public Statement {
 public:
-    Return(CallArgs *callArgs) : Statement(STMT_RETURN), callArgs(callArgs) {}
+    Return(CallArgs *callArgs, int row, int col) : Statement(STMT_RETURN, row, col), callArgs(callArgs) {}
 
     CallArgs *getCallArgs() const {
         return callArgs;

@@ -9,7 +9,7 @@ namespace AST {
 
 class Break : public Statement {
 public:
-    Break(CallArgs *callArgs) : Statement(STMT_BREAK), callArgs(callArgs) {}
+    Break(CallArgs *callArgs, int row, int col) : Statement(STMT_BREAK, row, col), callArgs(callArgs) {}
 
     CallArgs *getCallArgs() const {
         return callArgs;

@@ -27,7 +27,7 @@ void CodeModule::runPass(llvm::legacy::PassManager &manager) {
 void CodeModule::codegenInitializer() {
     auto *func = module->getFunction("__init__");
     if (func != nullptr) {
-        throw CodegenException("redefine symbol init function");
+        throw CodegenException("redefine symbol init function", -1, -1);
     }
     auto *ft = llvm::FunctionType::get(voidpTy, {}, false);
     func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__init__", module);
@@ -69,7 +69,7 @@ void CodeModule::declareExternLangFunctions() {
     auto *voidp_3voidpintvoidp = llvm::FunctionType::get(voidpTy, {voidpTy, voidpTy, voidpTy, int32Ty, voidpTy}, false);
     auto *voidp_4voidpintvoidp = llvm::FunctionType::get(voidpTy,
                                                          {voidpTy, voidpTy, voidpTy, voidpTy, int32Ty, voidpTy}, false);
-    auto* int1Ty = llvm::Type::getInt1Ty(*context);
+    auto *int1Ty = llvm::Type::getInt1Ty(*context);
     auto *voidp_3voidp1int2bool = llvm::FunctionType::get(voidpTy, {voidpTy, voidpTy, voidpTy, int32Ty, int1Ty, int1Ty},
                                                           false);
 

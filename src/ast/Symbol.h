@@ -9,7 +9,7 @@ namespace AST {
 
 class Symbol : public Statement {
 public:
-    Symbol(std::string sym) : Statement(STMT_SYMBOL), sym(std::move(sym)) {}
+    Symbol(std::string sym, int row, int col) : Statement(STMT_SYMBOL, row, col), sym(std::move(sym)) {}
 
     const std::string &getSym() const {
         return sym;

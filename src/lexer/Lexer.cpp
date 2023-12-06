@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include "Lexer.h"
+#include "LexerException.h"
 
 namespace UltraRuby::Lexer {
 const std::map<std::string, TokenType> keywords{
@@ -102,9 +103,20 @@ bool isOp(int c) {
     return false;
 }
 
+Lexer::Lexer(std::shared_ptr<StringLexerInput> input) :
+        input(std::move(input)), lastChar(' '), queue(this), eofReached(false), row(1) {
+    lineBeginnings.push_back(0);
+    emmitToken();
+    queue.removeLast();
+}
+
 void Lexer::emmitToken() {
+    int lineStart = lineBeginnings.back();
+    int col = input->getPos() - lineStart;
     if (input->eof()) {
-        queue.pushBack(TOK_EOF);
+        if (!eofReached) {
+            queue.pushBack(TOK_EOF, row, col);
+        }
         return;
     }
     switch (lastChar) {
@@ -113,16 +125,25 @@ void Lexer::emmitToken() {
             do {
                 lastChar = input->getNextChar();
             } while (lastChar == ' ' || lastChar == '\t');
-            queue.pushBack(TOK_SPACES);
+            queue.pushBack(TOK_SPACES, row, col);
             return;
         }
         case '\n':
         case '\r': {
-            //todo count new lines
+            int oldRow = row;
             do {
-                lastChar = input->getNextChar();
+                if (lastChar == '\r') {
+                    lastChar = input->getNextChar();
+                    if (lastChar == '\n') {
+                        lastChar = input->getNextChar();
+                    }
+                } else {
+                    lastChar = input->getNextChar();
+                }
+                lineBeginnings.push_back(input->getPos());
+                row++;
             } while (lastChar == '\n' || lastChar == '\r');
-            queue.pushBack(TOK_NEWLINE);
+            queue.pushBack(TOK_NEWLINE, row, oldRow);
             return;
         }
 
@@ -134,7 +155,7 @@ void Lexer::emmitToken() {
             std::string str;
             if (lastChar == '"') {
                 lastChar = input->getNextChar();
-                queue.pushBack(TOK_COMMON_STRING, std::move(str));
+                queue.pushBack(TOK_COMMON_STRING, std::move(str), row, col);
                 return;
             }
             do {
@@ -143,7 +164,7 @@ void Lexer::emmitToken() {
                 //todo handle escape sequences
             } while (lastChar != ending);
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_COMMON_STRING, std::move(str));
+            queue.pushBack(TOK_COMMON_STRING, std::move(str), row, col);
             return;
         }
 
@@ -151,11 +172,7 @@ void Lexer::emmitToken() {
             do {
                 lastChar = input->getNextChar();
             } while (!input->eof() && lastChar != '\n' && lastChar != '\r');
-            if (input->eof()) {
-                queue.pushBack(TOK_EOF);
-            } else {
-                queue.pushBack(TOK_NEWLINE);
-            }
+            emmitToken();
             return;
         }
 
@@ -180,75 +197,75 @@ void Lexer::emmitToken() {
                 lastChar = input->getNextChar();
             } while (isOp(lastChar));
             if (op == "=>") {
-                queue.pushBack(TOK_HASH_ASSOC);
+                queue.pushBack(TOK_HASH_ASSOC, row, col);
                 return;
             }
             if (!ops.contains(op)) {
-                queue.pushBack(TOK_ERROR);
+                queue.pushBack(TOK_ERROR, row, col);
                 return;
             }
-            queue.pushBack(TOK_OP, ops.at(op));
+            queue.pushBack(TOK_OP, ops.at(op), row, col);
             return;
         }
         case ':': {
             lastChar = input->getNextChar();
             if (lastChar == ':') {
                 lastChar = input->getNextChar();
-                queue.pushBack(TOK_DOUBLE_COLON);
+                queue.pushBack(TOK_DOUBLE_COLON, row, col);
                 return;
             }
-            queue.pushBack(TOK_COLON);
+            queue.pushBack(TOK_COLON, row, col);
             return;
         }
         case ',': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_COMMA);
+            queue.pushBack(TOK_COMMA, row, col);
             return;
         }
         case '.': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_DOT);
+            queue.pushBack(TOK_DOT, row, col);
             return;
         }
         case ';': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_SEMICOLON);
+            queue.pushBack(TOK_SEMICOLON, row, col);
             return;
         }
         case '@': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_AT_SIGN);
+            queue.pushBack(TOK_AT_SIGN, row, col);
             return;
         }
 
         case '(': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_PAREN_LEFT);
+            queue.pushBack(TOK_PAREN_LEFT, row, col);
             return;
         }
         case ')': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_PAREN_RIGHT);
+            queue.pushBack(TOK_PAREN_RIGHT, row, col);
             return;
         }
         case '[': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_BRACKET_LEFT);
+            queue.pushBack(TOK_BRACKET_LEFT, row, col);
             return;
         }
         case ']': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_BRACKET_RIGHT);
+            queue.pushBack(TOK_BRACKET_RIGHT, row, col);
             return;
         }
         case '{': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_BRACE_LEFT);
+            queue.pushBack(TOK_BRACE_LEFT, row, col);
             return;
         }
         case '}': {
             lastChar = input->getNextChar();
-            queue.pushBack(TOK_BRACE_RIGHT);
+            queue.pushBack(TOK_BRACE_RIGHT, row, col);
             return;
         }
     }
@@ -260,9 +277,9 @@ void Lexer::emmitToken() {
             identifier += (char) lastChar;
         }
         if (getKeyword(identifier) != TOK_ERROR) {
-            queue.pushBack(getKeyword(identifier));
+            queue.pushBack(getKeyword(identifier), row, col);
         } else {
-            queue.pushBack(TOK_IDENTIFIER, std::move(identifier));
+            queue.pushBack(TOK_IDENTIFIER, std::move(identifier), row, col);
         }
         return;
     }
@@ -273,28 +290,21 @@ void Lexer::emmitToken() {
             numStr += (char) lastChar;
             lastChar = input->getNextChar();
             if (pointIncluded && lastChar == '.') {
-                logError("floating point must contain only one period");
-                queue.pushBack(TOK_ERROR);
-                return;
+                throw LexerException("floating point must contain only one period", row, col);
             }
             if (lastChar == '.') {
                 pointIncluded = true;
             }
         } while (isdigit(lastChar) || lastChar == '.');
         if (pointIncluded) {
-            queue.pushBack(TOK_FLOAT, std::move(numStr));
+            queue.pushBack(TOK_FLOAT, std::move(numStr), row, col);
         } else {
-            queue.pushBack(TOK_INTEGER, std::move(numStr));
+            queue.pushBack(TOK_INTEGER, std::move(numStr), row, col);
         }
         return;
     }
     lastChar = input->getNextChar();
-    logError("unknown input char");
-    queue.pushBack(TOK_ERROR);
-}
-
-void Lexer::logError(const char *log) {
-    std::cerr << "Lexer error: " << log << std::endl;
+    throw LexerException("unknown input char", row, col);
 }
 
 }
